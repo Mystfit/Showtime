@@ -10,12 +10,19 @@ class ZstMethod():
     METHOD_ACCESSMODE = "zst_method_Accessmode"
     METHOD_OUTPUT = "zst_method_output"
 
-    def __init__(self, name, node, accessMode, args, output=None):
+    def __init__(self, name, node, accessMode, args, callback=None, output=None):
         self.name = name
         self.node = node
         self.accessMode = accessMode
         self.args = args
         self.output = output
+        self.callback = callback
+
+    def run(self, args):
+        if not self.callback:
+            print "No external callback set for this method object!"
+            return
+        return self.callback(args)
 
     def as_dict(self):
         return {
@@ -24,6 +31,19 @@ class ZstMethod():
             ZstMethod.METHOD_ACCESSMODE: self.accessMode,
             ZstMethod.METHOD_ARGS: self.args,
             ZstMethod.METHOD_OUTPUT: self.output}
+
+    def set_Args(self, args):
+        for name, value in args.iteritems():
+            if name in self.args:
+                self.args[name] = value
+
+    @staticmethod
+    def compare_arg_lists(args1, args2):
+        for name, value in args1.iteritems():
+            if name not in args2:
+                return False
+        return True
+
 
     @staticmethod
     def build_local_methods(methods):

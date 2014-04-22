@@ -70,12 +70,20 @@ class ZstNode(object):
     def handle_requests(self):
         socklist = dict(self.poller.poll(0))
         if self.subscriber in socklist:
-            self.receive_method_update(ZstNode.recv(self.subscriber))
+            self.process_queue(self.subscriber, self.receive_method_update)
         if self.reply in socklist:
-            self.handle_reply_requests(ZstNode.recv(self.reply))
-        for name, peer in self.peers.iteritems():
-            if peer.subscriber in socklist:
-                self.receive_method_update(ZstNode.recv(peer.subscriber))
+            self.process_queue(self.reply, self.handle_reply_requests)
+
+        # for name, peer in self.peers.iteritems():
+        #     if peer.subscriber in socklist:
+        #         print "Start processing subscriber"
+        #         self.process_queue(self.reply, self.receive_method_update)
+
+    def process_queue(self, socket, callback):
+        message = ZstNode.recv(socket, zmq.NOBLOCK)
+        while message:
+            callback(message)
+            message = ZstNode.recv(socket, zmq.NOBLOCK)
     
     # -------------
     # Reply handler
@@ -256,7 +264,7 @@ class ZstNode(object):
             message.data[ZstMethod.METHOD_ARGS])
         if message.method in self.methods:
             print "Matched local method: {0}".format(message.method)
-            self.methods[message.method].run(message.data[ZstMethod.METHOD_ARGS])
+            self.methods[message.method].run(message)
 
     # -----------------------
     # Send / Recieve handlers
@@ -266,13 +274,17 @@ class ZstNode(object):
         socket.send_multipart([str(method), json.dumps(data)])
 
     @staticmethod
-    def recv(socket):
-        msg = socket.recv_multipart()
-        method = msg[0]
-        data = msg[1]
-        method = method if method else None
-        data = json.loads(data) if data else None
-        return MethodMessage(method=method, data=data)
+    def recv(socket, noblock=None):
+        try:
+            msg = socket.recv_multipart(zmq.NOBLOCK) if noblock else socket.recv_multipart()
+            method = msg[0]
+            data = msg[1]
+            method = method if method else None
+            data = json.loads(data) if data else None
+            return MethodMessage(method=method, data=data)
+        except zmq.ZMQError:
+            pass
+        return None
 
 
 class MethodMessage():

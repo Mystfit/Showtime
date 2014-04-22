@@ -15,9 +15,9 @@ class SineWave(object):
         self.node.request_register_method("sinewave", ZstMethod.READ)
         self.node.request_register_method("set_speed", ZstMethod.WRITE, {"speed": self.speed}, self.set_speed)
 
-    def set_speed(self, args):
+    def set_speed(self, message):
         print "CHANGING SPEED"
-        self.speed = args["speed"]
+        self.speed = message["args"]["speed"]
 
     def sinewave(self):
         outSine = math.sin(self.counter)

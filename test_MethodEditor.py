@@ -31,10 +31,12 @@ if nodeName in nodeList:
     reader.request_register_node(socket)
 
     time.sleep(1)
+    reader.handle_requests()
 
+    count = 0
     while True:
-        reader.handle_requests()
         args = {}
         for argname, argvalue in node.methods[methodName].args.iteritems():
-            args[argname] = int(raw_input("Enter a value for the argument " + str(argname) + ": "))
+            args[argname] = raw_input("Enter a value for the argument " + str(argname) + ": ")
         reader.update_remote_method(node.methods[methodName], args)
+        time.sleep(0.1)

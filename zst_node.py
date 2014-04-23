@@ -57,12 +57,11 @@ class ZstNode(object):
 
     def listen(self):
         print 'Node listening for requests...'
-        while True:
-            try:
+        try:
+            while True:
                 self.handle_requests()
-            except KeyboardInterrupt:
-                print "\nFinished"
-                break
+        except KeyboardInterrupt:
+            print "\nFinished"
 
     # ----------
     # Event loop
@@ -73,11 +72,6 @@ class ZstNode(object):
             self.process_queue(self.subscriber, self.receive_method_update)
         if self.reply in socklist:
             self.process_queue(self.reply, self.handle_reply_requests)
-
-        # for name, peer in self.peers.iteritems():
-        #     if peer.subscriber in socklist:
-        #         print "Start processing subscriber"
-        #         self.process_queue(self.reply, self.receive_method_update)
 
     def process_queue(self, socket, callback):
         message = ZstNode.recv(socket, zmq.NOBLOCK)
@@ -96,7 +90,7 @@ class ZstNode(object):
     # ------------------------------------------------------
     def request_register_node(self, nodesocket=None):
         socket = nodesocket if nodesocket else self.stage
-        
+
         # Request a port for this equipment to bind as its outgoing sender
         print "REQ-->: Requesting remote node to register our addresses. Reply:{0}, Publisher:{1}".format(self.replyAddress, self.publisherAddress)
 
@@ -258,13 +252,13 @@ class ZstNode(object):
     # ----------------------------------------------
     def receive_method_update(self, message):
         print "Recieved method '{0}' from '{1}' with value '{2} and args {3}'".format(
-            message.method, 
-            message.data[ZstMethod.METHOD_ORIGIN_NODE], 
+            message.method,
+            message.data[ZstMethod.METHOD_ORIGIN_NODE],
             message.data[ZstMethod.METHOD_OUTPUT],
             message.data[ZstMethod.METHOD_ARGS])
         if message.method in self.methods:
             print "Matched local method: {0}".format(message.method)
-            self.methods[message.method].run(message)
+            self.methods[message.method].run(message)            
 
     # -----------------------
     # Send / Recieve handlers
@@ -297,7 +291,7 @@ class MethodMessage():
 if __name__ == '__main__':
 
     if len(sys.argv) > 2:
-        
+
         node = ZstNode(sys.argv[1], sys.argv[2])
         node.request_register_node(node.stage)
         node.request_register_method("testMethod", ZstMethod.WRITE, ['arg1', 'arg2', 'arg3'])

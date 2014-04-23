@@ -45,7 +45,7 @@ if nodeName in nodeList:
     reader.request_register_node(socket)
 
     time.sleep(1)
-    reader.handle_requests()
+    #reader.handle_requests()
 
     #args = {'deviceindex': 0, 'trackindex': 4, 'parameterindex': 1, 'value': value}
     args = {}

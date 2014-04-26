@@ -1,6 +1,8 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Express 2012 for Windows Desktop
+# Visual Studio Express 2013 for Windows Desktop
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZstShowtime", "ZstShowtime\ZstShowtime.csproj", "{62ED8430-5263-442D-9D2F-62B92E9DC528}"
 	ProjectSection(ProjectDependencies) = postProject
 		{12D3FB9F-85B8-4FFA-AA2B-F21187F4C7A0} = {12D3FB9F-85B8-4FFA-AA2B-F21187F4C7A0}
@@ -9,13 +11,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZstShowtime", "ZstShowtime\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetMQ_Vs2008", "..\..\..\netmq\src\NetMQ\NetMQ_Vs2008.csproj", "{12D3FB9F-85B8-4FFA-AA2B-F21187F4C7A0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZstTestClient", "ZstStage\ZstTestClient.csproj", "{246588D3-1C3E-4E82-98D5-69DA8FF76DA5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Newtonsoft.Json.Net35", "..\..\..\Newtonsoft.Json\Src\Newtonsoft.Json\Newtonsoft.Json.Net35.csproj", "{A9AE40FF-1A21-414A-9FE7-3BE13644CC6D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZstTestClient", "ZstTestClient\ZstTestClient.csproj", "{246588D3-1C3E-4E82-98D5-69DA8FF76DA5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZstStage", "ZstStage\ZstStage.csproj", "{CA5A98DC-0E4F-4B99-9277-CCA429310109}"
 	ProjectSection(ProjectDependencies) = postProject
 		{62ED8430-5263-442D-9D2F-62B92E9DC528} = {62ED8430-5263-442D-9D2F-62B92E9DC528}
 		{12D3FB9F-85B8-4FFA-AA2B-F21187F4C7A0} = {12D3FB9F-85B8-4FFA-AA2B-F21187F4C7A0}
+		{A9AE40FF-1A21-414A-9FE7-3BE13644CC6D} = {A9AE40FF-1A21-414A-9FE7-3BE13644CC6D}
 	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Newtonsoft.Json.Net35", "..\..\..\Newtonsoft.Json\Src\Newtonsoft.Json\Newtonsoft.Json.Net35.csproj", "{A9AE40FF-1A21-414A-9FE7-3BE13644CC6D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -31,14 +36,18 @@ Global
 		{12D3FB9F-85B8-4FFA-AA2B-F21187F4C7A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{12D3FB9F-85B8-4FFA-AA2B-F21187F4C7A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{12D3FB9F-85B8-4FFA-AA2B-F21187F4C7A0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{246588D3-1C3E-4E82-98D5-69DA8FF76DA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{246588D3-1C3E-4E82-98D5-69DA8FF76DA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{246588D3-1C3E-4E82-98D5-69DA8FF76DA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{246588D3-1C3E-4E82-98D5-69DA8FF76DA5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A9AE40FF-1A21-414A-9FE7-3BE13644CC6D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A9AE40FF-1A21-414A-9FE7-3BE13644CC6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A9AE40FF-1A21-414A-9FE7-3BE13644CC6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A9AE40FF-1A21-414A-9FE7-3BE13644CC6D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{246588D3-1C3E-4E82-98D5-69DA8FF76DA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{246588D3-1C3E-4E82-98D5-69DA8FF76DA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{246588D3-1C3E-4E82-98D5-69DA8FF76DA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{246588D3-1C3E-4E82-98D5-69DA8FF76DA5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA5A98DC-0E4F-4B99-9277-CCA429310109}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA5A98DC-0E4F-4B99-9277-CCA429310109}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA5A98DC-0E4F-4B99-9277-CCA429310109}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA5A98DC-0E4F-4B99-9277-CCA429310109}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

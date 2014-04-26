@@ -1,46 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using ZST;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace ZstTestClient
-{
+namespace ZST{
+
+    class ZstStage : ZstNode{
+        public ZstStage(int port) : base("stage")
+        {
+            string address = "tcp://*:" + port;
+            m_reply.Bind(address);
+            Console.WriteLine("Stage active on address " + m_reply.Options.GetLastEndpoint);
+        }
+    }
+
     class Program
     {
         static void Main(string[] args)
         {
-            ZstNode node = new ZstNode("test", "tcp://130.195.44.51:6000");
-            node.requestRegisterNode();
-
-            Dictionary<string, object> nodeArgs = new Dictionary<string, object>(){
-                {"greeting", ""}};
-            node.requestRegisterMethod("testMethod", ZstMethod.WRITE, nodeArgs, testMethod);
-            Dictionary<string, ZstPeerLink> peerList = node.requestNodePeerlinks();
-
-            Console.WriteLine("");
-            foreach (KeyValuePair<string, ZstPeerLink> peer in peerList)
-            {
-                Console.WriteLine("Node: " + peer.Key);
-                Console.WriteLine("--------------");
-
-                foreach (KeyValuePair<string, ZstMethod> method in peer.Value.methods)
-                {
-                    Console.Write(method.Key);
-                    if (method.Value.args.Count > 0)
-                        Console.Write(" | ");
-                    foreach(KeyValuePair<string, object> arg in method.Value.args)
-                        Console.Write(arg.Key + ", ");
-                    Console.WriteLine("");
-                }
-                Console.WriteLine("");  
-            }
-        }
-
-        public static object testMethod(ZstMethod messageData)
-        {
-            Console.WriteLine("Hello " + messageData.args["greeting"].ToString());
-            return null;
+            int port = 6000;
+            ZstStage stage = new ZstStage(port);           
         }
     }
 }

@@ -43,8 +43,12 @@ namespace ZST {
         /// <summary>
         /// Get the stored output value of this method.
         /// </summary>
-        public string output { get { return m_output; } }
-        protected string m_output;
+        public object output
+        {
+            get { return m_output; }
+            set { m_output = value; }
+        }
+        protected object m_output;
 
         /// <summary>
         /// Reference to the actual method this wrapper controls.
@@ -54,6 +58,10 @@ namespace ZST {
 
         // Constructors
         // ------------
+        public ZstMethod(string name, string node)
+        {
+            init(name, node, READ, null, null);
+        }
         public ZstMethod(string name, string node, string accessMode, Dictionary<string, object> args)
         {
 			init(name, node, accessMode, args, null);
@@ -110,10 +118,10 @@ namespace ZST {
         /// <summary>
         /// Compare two argument lists and make sure they match.
         /// </summary>
-		public static bool compareArgLists(string[] args1, string[] args2)
+		public static bool compareArgLists(Dictionary<string, object> args1, Dictionary<string, object> args2)
         {
-			foreach(string arg in args1){
-				if(!args2.Contains(arg))
+			foreach(string arg in args1.Keys){
+				if(!args2.Keys.Contains(arg))
 					return false;
 			}
 			return true;
@@ -135,7 +143,15 @@ namespace ZST {
 			return outMethods;
 		}
 
+
+        /// <summary>
+        /// Converts a dictionary to a ZstMethod
+        /// </summary>
         public static ZstMethod dictToZstMethod(Dictionary<string, object> method){
+
+            if (method.Count < 1)
+                return null;
+
             Dictionary<string, object> methodArgs = null;
 
             if (method[METHOD_ARGS] != null)
@@ -147,6 +163,7 @@ namespace ZST {
                 (string)method[METHOD_ACCESSMODE],
                 methodArgs
 			);
+            localMethod.output = method[METHOD_OUTPUT];
 
             return localMethod;
         }

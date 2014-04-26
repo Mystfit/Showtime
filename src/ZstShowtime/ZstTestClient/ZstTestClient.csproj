@@ -53,6 +53,10 @@
       <Project>{12d3fb9f-85b8-4ffa-aa2b-f21187f4c7a0}</Project>
       <Name>NetMQ_Vs2008</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\..\Newtonsoft.Json\Src\Newtonsoft.Json\Newtonsoft.Json.Net35.csproj">
+      <Project>{a9ae40ff-1a21-414a-9fe7-3be13644cc6d}</Project>
+      <Name>Newtonsoft.Json.Net35</Name>
+    </ProjectReference>
     <ProjectReference Include="..\ZstShowtime\ZstShowtime.csproj">
       <Project>{62ed8430-5263-442d-9d2f-62b92e9dc528}</Project>
       <Name>ZstShowtime</Name>

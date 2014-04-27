@@ -160,7 +160,10 @@ namespace ZST
             if (e.ReceiveReady)
             {
                 MethodMessage msg = recv(e.Socket);
-                Console.WriteLine("Recieved method '" + msg.method + "' from '" + msg.data.node + "' with value '" + msg.data.output.ToString() + "'");
+                Console.Write("Recieved method '" + msg.method + "' from '" + msg.data.node);
+                if(msg.data.output != null)
+                    Console.Write("' with value '" + msg.data.output.ToString() + "'");
+                Console.WriteLine("");
                 if (m_methods.Keys.Contains(msg.method))
                     m_methods[msg.method].run(msg.data);
             }
@@ -376,33 +379,6 @@ namespace ZST
             return null;
         }
 
-
-        // Remote send/recieve methods
-        // ---------------------------
-        /// <summary>Send a message to a remote node</summary>
-        protected static void send(NetMQSocket socket, string method)
-        {
-            send(socket, method, null);
-        }
-
-        /// <summary>Send a message to a remote node using method info</summary>
-        protected static void send(NetMQSocket socket, string method, ZstMethod methodData)
-        {
-            NetMQMessage message = new NetMQMessage();
-            message.Append(method);
-            if (methodData != null)
-            {
-                string data = JsonConvert.SerializeObject(methodData.as_dict());
-                JsonConvert.SerializeObject(data, Formatting.Indented);
-                message.Append(data);
-            }
-            else
-            {
-                message.Append("{}");
-            }
-            socket.SendMessage(message);
-        }
-
         
         // Method publishing / controlling
         // -------------------------------
@@ -430,10 +406,37 @@ namespace ZST
             {
                 if (ZstMethod.compareArgLists(args, m_peers[method.node].methods[method.name].args))
                 {
-                    ZstMethod methodRequest = new ZstMethod(method.name, m_nodeId, method.accessMode, args);
+                    ZstMethod methodRequest = new ZstMethod(method.name, method.node, method.accessMode, args);
                     send(m_publisher, method.name, methodRequest);
                 }
             }
+        }
+
+
+        // Remote send/recieve methods
+        // ---------------------------
+        /// <summary>Send a message to a remote node</summary>
+        protected static void send(NetMQSocket socket, string method)
+        {
+            send(socket, method, null);
+        }
+
+        /// <summary>Send a message to a remote node using method info</summary>
+        protected static void send(NetMQSocket socket, string method, ZstMethod methodData)
+        {
+            NetMQMessage message = new NetMQMessage();
+            message.Append(method);
+            if (methodData != null)
+            {
+                string data = JsonConvert.SerializeObject(methodData.as_dict());
+                JsonConvert.SerializeObject(data, Formatting.Indented);
+                message.Append(data);
+            }
+            else
+            {
+                message.Append("{}");
+            }
+            socket.SendMessage(message);
         }
 
         /// <summary>Receive a message from a remote node</summary>

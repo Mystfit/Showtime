@@ -10,7 +10,7 @@ class ZstMethod():
     METHOD_ACCESSMODE = "zst_method_Accessmode"
     METHOD_OUTPUT = "zst_method_output"
 
-    def __init__(self, name, node, accessMode, args, callback=None, output=None):
+    def __init__(self, name, node, accessMode=None, args=None, callback=None, output=None):
         self.name = name
         self.node = node
         self.accessMode = accessMode
@@ -50,10 +50,10 @@ class ZstMethod():
         methodList = {}
         for methodname, method in methods.iteritems():
             localMethod = ZstMethod(
-                method[ZstMethod.METHOD_NAME],
-                method[ZstMethod.METHOD_ORIGIN_NODE],
-                method[ZstMethod.METHOD_ACCESSMODE],
-                method[ZstMethod.METHOD_ARGS],
-                method[ZstMethod.METHOD_OUTPUT])
+                name=method[ZstMethod.METHOD_NAME],
+                node=method[ZstMethod.METHOD_ORIGIN_NODE],
+                accessMode=method[ZstMethod.METHOD_ACCESSMODE],
+                args=method[ZstMethod.METHOD_ARGS],
+                output=method[ZstMethod.METHOD_OUTPUT])
             methodList[methodname] = localMethod
         return methodList

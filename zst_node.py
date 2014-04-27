@@ -37,7 +37,8 @@ class ZstNode(object):
         self.poller = zmq.Poller()
 
         # Binding ports
-        address = 'tcp://{0}:*'.format(socket.gethostbyname(socket.gethostname()))
+        address = 'tcp://{0}:*'.format(
+            socket.gethostbyname(socket.gethostname()))
         self.reply.bind(address)
         self.replyAddress = self.reply.getsockopt(zmq.LAST_ENDPOINT)
 
@@ -78,7 +79,7 @@ class ZstNode(object):
         while message:
             callback(message)
             message = ZstNode.recv(socket, zmq.NOBLOCK)
-    
+
     # -------------
     # Reply handler
     # -------------
@@ -118,7 +119,7 @@ class ZstNode(object):
             methodData.args[ZstPeerLink.PUBLISHER_ADDRESS])
 
         self.subscribe_to(self.peers[methodData.node])
-        
+
         ZstNode.send(self.reply, ZstNode.OK)
         print "Registered node '{0}'. Reply:{1}, Publisher:{2}".format(methodData.node, self.peers[methodData.node].replyAddress, self.peers[methodData.node].publisherAddress)
 
@@ -148,8 +149,8 @@ class ZstNode(object):
         
         # Make remote copy of local method on stage
         ZstNode.send(socket, ZstNode.REPLY_REGISTER_METHOD, self.methods[method])
-        message = ZstNode.recv(socket)
 
+        message = ZstNode.recv(socket)
         if message.method == ZstNode.OK:
             print "REP<--: Remote node acknowledged our method '{0}'".format(method)
         else:
@@ -175,9 +176,9 @@ class ZstNode(object):
         peerList = {}
         for peerName, peerData in self.peers.iteritems():
             peerList[peerName] = peerData.as_dict()
-       
+
         request = ZstMethod(
-            name=ZstNode.REPLY_NODE_PEERLINKS, 
+            name=ZstNode.REPLY_NODE_PEERLINKS,
             node=self.id,
             output=peerList)
         ZstNode.send(self.reply, ZstNode.OK, request)
@@ -194,15 +195,15 @@ class ZstNode(object):
         methodList = {}
         for name, method in self.methods.iteritems():
             methodList[name] = method.as_dict()
-        
+
         request = ZstMethod(
-            name=ZstNode.REPLY_METHOD_LIST, 
+            name=ZstNode.REPLY_METHOD_LIST,
             node=self.nodeId,
             output=methodList)
         ZstNode.send(self.reply, ZstNode.OK, request)
 
     # -------------------------------------------------------------
-    # Request/Reply a list of all available methods provided by all 
+    # Request/Reply a list of all available methods provided by all
     # connected peers to the remote node
     # -------------------------------------------------------------
     def request_all_peer_methods(self, nodesocket=None):
@@ -216,11 +217,10 @@ class ZstNode(object):
             for methodName, method in peer.methods.iteritems():
                 methodList[methodName] = method.as_dict()
         request = ZstMethod(
-            name=REPLY_ALL_PEER_METHODS, 
+            name=REPLY_ALL_PEER_METHODS,
             node=self.nodeId,
             output=methodList)
         ZstNode.send(self.reply, ZstNode.OK, request)
-
 
     # ----------------------------------------------------------
     # Publish updates from a node method to all interested nodes
@@ -233,7 +233,7 @@ class ZstNode(object):
         # Only update local values on methods WE own
         if method.node == self.id:
             method.output = methodvalue
-            ZstNode.send(self.publisher, method.name, method.as_dict())
+            ZstNode.send(self.publisher, method.name, method)
         else:
             print "We don't own this method!"
         return methodvalue
@@ -254,7 +254,6 @@ class ZstNode(object):
             print "Method destination node not in connected peers list!"
         pass
 
-
     # ----------------------------------------------
     # Recieve updates from nodes we're interested in
     # ----------------------------------------------
@@ -266,22 +265,26 @@ class ZstNode(object):
             message.data.args)
         if message.method in self.methods:
             print "Matched local method: {0}".format(message.method)
-            self.methods[message.method].run(message.data)            
+            self.methods[message.method].run(message.data)
 
     # -----------------------
     # Send / Recieve handlers
     # -----------------------
     @staticmethod
     def send(socket, method, methodData=None):
-        outData = {}
-        if methodData:
-            outData = methodData.as_dict()
-        socket.send_multipart([str(method), json.dumps(outData)])
+        try:
+            outData = {}
+            if methodData:
+                outData = methodData.as_dict()
+            socket.send_multipart([str(method), json.dumps(outData)])
+        except Exception, e:
+            print e
 
     @staticmethod
     def recv(socket, noblock=None):
         try:
-            msg = socket.recv_multipart(zmq.NOBLOCK) if noblock else socket.recv_multipart()
+            msg = socket.recv_multipart(
+                zmq.NOBLOCK) if noblock else socket.recv_multipart()
             method = msg[0]
             method = method if method else None
             data = json.loads(msg[1]) if msg[1] else None
@@ -294,13 +297,14 @@ class ZstNode(object):
                     output=data[ZstMethod.METHOD_OUTPUT])
                 return MethodMessage(method=method, data=methodData)
             else:
-                 return MethodMessage(method=method, data=data)
-        except zmq.ZMQError:
-            pass
+                return MethodMessage(method=method, data=data)
+        except zmq.ZMQError, e:
+            print e
         return None
 
 
 class MethodMessage():
+
     def __init__(self, method, data):
         self.method = method
         self.data = data
@@ -320,10 +324,9 @@ if __name__ == '__main__':
         print "--------------------"
         nodeList = node.request_node_peerlinks(node.stage)
         for name, peer in nodeList.iteritems():
-            print name, json.dumps(peer.as_dict(), indent=1, sort_keys=True)   
+            print name, json.dumps(peer.as_dict(), indent=1, sort_keys=True)
 
         node.listen()
-    
+
     print "Please provide a name for this node!"
     sys.exit(0)
-

@@ -18,6 +18,12 @@ class ZstPeerLink():
         self.subscriber = None
         self.methods = methods if methods else {}
 
+    def disconnect(self):
+        if self.request:
+            self.request.close()
+        if self.subscriber:
+            self.subscriber.close()
+
     def connect_to_reply(self, ctx):
         self.request = ctx.socket(zmq.REQ)
         self.request.connect(self.replyAddress)

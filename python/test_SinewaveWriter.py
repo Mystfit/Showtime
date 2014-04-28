@@ -24,7 +24,7 @@ class Sinewave(threading.Thread):
             self.reader.update_remote_method(self.node.methods[self.method], self.args)
             time.sleep(0.005)
 
-reader = ZstNode("Reader", sys.argv[1])
+reader = ZstNode("SinewaveWriter", sys.argv[1])
 nodeList = reader.request_node_peerlinks()
 
 print "Nodes on stage:"
@@ -56,9 +56,10 @@ if nodeName in nodeList:
     sinewave.start()
     try:
         while True:
-            reader.handle_requests()
+            pass
     except KeyboardInterrupt:
         exitFlag = 1
         sinewave.join()
+        reader.close()
         print "\nExiting..."
         sys.exit(0)

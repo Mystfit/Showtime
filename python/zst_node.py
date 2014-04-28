@@ -2,6 +2,9 @@ import zmq
 import sys
 import socket
 import json
+import time
+from zst_io import *
+from zst_poller import ZstPoller
 from zst_method import ZstMethod
 from zst_peerLink import ZstPeerLink
 
@@ -20,6 +23,7 @@ class ZstNode(object):
     REPLY_NODE_PEERLINKS = "reply_node_peerlinks"
     REPLY_METHOD_LIST = "reply_list_methods"
     REPLY_ALL_PEER_METHODS = "reply_all_peer_methods"
+    DISCONNECT_PEER = "disconnect_peer"
 
     def __init__(self, nodeId, stageAddress=None):
         self.id = nodeId
@@ -34,11 +38,11 @@ class ZstNode(object):
         self.publisher = self.ctx.socket(zmq.PUB)
         self.subscriber = self.ctx.socket(zmq.SUB)
         self.stage = self.ctx.socket(zmq.REQ) if stageAddress else None
-        self.poller = zmq.Poller()
+        #self.poller = zmq.Poller()
+        self.pollerThread = ZstPoller(self.ctx, self.receive_method_update)
 
         # Binding ports
-        address = 'tcp://{0}:*'.format(
-            socket.gethostbyname(socket.gethostname()))
+        address = 'tcp://{0}:*'.format(socket.gethostbyname(socket.gethostname()))
         self.reply.bind(address)
         self.replyAddress = self.reply.getsockopt(zmq.LAST_ENDPOINT)
 
@@ -53,38 +57,77 @@ class ZstNode(object):
             self.stage.connect(self.stageAddress)
 
         # Initialize poller
-        self.poller.register(self.reply, zmq.POLLIN)
-        self.poller.register(self.publisher, zmq.POLLIN)
+        #self.poller.register(self.reply, zmq.POLLIN)
+        self.pollerThread.poller.register(self.reply, zmq.POLLIN)
+        self.pollerThread.start()
+
+
+    def close(self):
+        print "PUB-->: Announcing that we're leaving."
+        send(self.publisher, ZstNode.DISCONNECT_PEER, ZstMethod(ZstNode.DISCONNECT_PEER, self.id))
+
+        if self.stage:
+            self.stage.close()
+
+        print "Exiting poller"
+        self.pollerThread.exitFlag = 1
+        #self.pollerThread.exit()
+        self.pollerThread.join(2.0)
+        if self.pollerThread.isAlive():
+            print "Thread alive. Exiting anyway"
+
+        self.reply.close()
+        self.publisher.close()
+        self.subscriber.close()
+
+        self.ctx.destroy()
+        print "Cleanup complete"
+
+    def disconnect_peer(self, methodData):
+        print "Peer '{0}' is leaving.".format(methodData.node)
+        if methodData.node in self.peers:
+            self.subscriber.disconnect(self.peers[methodData.node].publisherAddress)
+            self.peers[methodData.node].disconnect()
+            del self.peers[methodData.node]
 
     def listen(self):
         print 'Node listening for requests...'
         try:
             while True:
-                self.handle_requests()
+                time.sleep(4)
         except KeyboardInterrupt:
             print "\nFinished"
+            self.close()
 
     # ----------
     # Event loop
     # ----------
-    def handle_requests(self):
-        socklist = dict(self.poller.poll(0))
-        if self.subscriber in socklist:
-            self.process_queue(self.subscriber, self.receive_method_update)
-        if self.reply in socklist:
-            self.process_queue(self.reply, self.handle_reply_requests)
+    # def handle_requests(self):
+    #     socks = self.poller.poll(0)
+    #     while socks:
+    #         socklist = dict(socks)
+    #         if self.subscriber in socklist:
+    #             self.receive_method_update(recv(self.subscriber, zmq.DONTWAIT))
+    #         if self.reply in socklist:
+    #             self.receive_method_update(recv(self.reply, zmq.DONTWAIT))
 
-    def process_queue(self, socket, callback):
-        message = ZstNode.recv(socket, zmq.NOBLOCK)
-        while message:
-            callback(message)
-            message = ZstNode.recv(socket, zmq.NOBLOCK)
+    #         socks = self.poller.poll(0)
 
-    # -------------
-    # Reply handler
-    # -------------
-    def handle_reply_requests(self, message):
-        getattr(self, message.method)(message.data)
+    # ----------------------------------------------
+    # Recieve updates from nodes we're interested in
+    # ----------------------------------------------
+    def receive_method_update(self, message):
+        if message.method in self.methods:
+            print "Matched local method '{0}' from '{1}' with value '{2} and args {3}'".format(
+                message.method,
+                message.data.node,
+                message.data.output,
+                message.data.args)
+            self.methods[message.method].run(message.data)
+
+        if hasattr(self, message.method):
+            print "Matched internal method {0}".format(message.method)
+            getattr(self, message.method)(message.data)
 
     # ------------------------------------------------------
     # Request/Reply this node be registered to a remote peer
@@ -101,8 +144,8 @@ class ZstNode(object):
                 ZstPeerLink.REPLY_ADDRESS: self.replyAddress,
                 ZstPeerLink.PUBLISHER_ADDRESS: self.publisherAddress
             })
-        ZstNode.send(socket, ZstNode.REPLY_REGISTER_NODE, request)
-        message = ZstNode.recv(socket)
+        send(socket, ZstNode.REPLY_REGISTER_NODE, request)
+        message = recv(socket)
 
         if message.method == ZstNode.OK:
             print "REP<--: Remote node acknowledged our addresses. Reply:{0}, Publisher:{1}".format(self.replyAddress, self.publisherAddress)
@@ -115,12 +158,12 @@ class ZstNode(object):
 
         self.peers[methodData.node] = ZstPeerLink(
             methodData.node,
-            methodData.args[ZstPeerLink.REPLY_ADDRESS], 
+            methodData.args[ZstPeerLink.REPLY_ADDRESS],
             methodData.args[ZstPeerLink.PUBLISHER_ADDRESS])
 
         self.subscribe_to(self.peers[methodData.node])
 
-        ZstNode.send(self.reply, ZstNode.OK)
+        send(self.reply, ZstNode.OK)
         print "Registered node '{0}'. Reply:{1}, Publisher:{2}".format(methodData.node, self.peers[methodData.node].replyAddress, self.peers[methodData.node].publisherAddress)
 
     # -------------------------------------------
@@ -133,7 +176,7 @@ class ZstNode(object):
         self.peers[peerlink.name] = peerlink
 
         # Register with the event poller
-        self.poller.register(self.subscriber, zmq.POLLIN)
+        self.pollerThread.poller.register(self.subscriber, zmq.POLLIN)
         print "Connected to peer on", self.subscriber.getsockopt(zmq.LAST_ENDPOINT)
 
     # ---------------------------------------
@@ -146,11 +189,11 @@ class ZstNode(object):
 
         # Register local copy of our method first
         self.methods[method] = ZstMethod(method, self.id, mode, args, callback)
-        
-        # Make remote copy of local method on stage
-        ZstNode.send(socket, ZstNode.REPLY_REGISTER_METHOD, self.methods[method])
 
-        message = ZstNode.recv(socket)
+        # Make remote copy of local method on stage
+        send(socket, ZstNode.REPLY_REGISTER_METHOD, self.methods[method])
+        message = recv(socket)
+
         if message.method == ZstNode.OK:
             print "REP<--: Remote node acknowledged our method '{0}'".format(method)
         else:
@@ -161,7 +204,7 @@ class ZstNode(object):
             print "'{0}' method already registered. Overwriting".format(methodData.name)
 
         self.peers[methodData.node].methods[methodData.name] = methodData
-        ZstNode.send(self.reply, ZstNode.OK)
+        send(self.reply, ZstNode.OK)
         print "Registered method '{0}'. Origin:{1}, AccessMode:{2}, Args:{3}".format(methodData.name, methodData.node, methodData.accessMode, methodData.args)
 
     # -----------------------------------------------------------------
@@ -169,8 +212,8 @@ class ZstNode(object):
     # -----------------------------------------------------------------
     def request_node_peerlinks(self, nodesocket=None):
         socket = nodesocket if nodesocket else self.stage
-        ZstNode.send(socket, ZstNode.REPLY_NODE_PEERLINKS)
-        return ZstPeerLink.build_local_peerlinks(ZstNode.recv(socket).data.output)
+        send(socket, ZstNode.REPLY_NODE_PEERLINKS)
+        return ZstPeerLink.build_local_peerlinks(recv(socket).data.output)
 
     def reply_node_peerlinks(self, args):
         peerList = {}
@@ -181,15 +224,15 @@ class ZstNode(object):
             name=ZstNode.REPLY_NODE_PEERLINKS,
             node=self.id,
             output=peerList)
-        ZstNode.send(self.reply, ZstNode.OK, request)
+        send(self.reply, ZstNode.OK, request)
 
     # -------------------------------------------------------------------
     # Request/Reply a list of all available methods provided by this node
     # -------------------------------------------------------------------
     def request_method_list(self, nodesocket=None):
         socket = nodesocket if nodesocket else self.stage
-        ZstNode.send(socket, ZstNode.REPLY_METHOD_LIST)
-        return ZstMethod.build_local_methods(ZstNode.recv(socket).data)
+        send(socket, ZstNode.REPLY_METHOD_LIST)
+        return ZstMethod.build_local_methods(recv(socket).data)
 
     def reply_method_list(self, args):
         methodList = {}
@@ -200,7 +243,7 @@ class ZstNode(object):
             name=ZstNode.REPLY_METHOD_LIST,
             node=self.nodeId,
             output=methodList)
-        ZstNode.send(self.reply, ZstNode.OK, request)
+        send(self.reply, ZstNode.OK, request)
 
     # -------------------------------------------------------------
     # Request/Reply a list of all available methods provided by all
@@ -208,8 +251,8 @@ class ZstNode(object):
     # -------------------------------------------------------------
     def request_all_peer_methods(self, nodesocket=None):
         socket = nodesocket if nodesocket else self.stage
-        ZstNode.send(socket, ZstNode.REPLY_ALL_PEER_METHODS)
-        return ZstMethod.build_local_methods(ZstNode.recv(socket).data)
+        send(socket, ZstNode.REPLY_ALL_PEER_METHODS)
+        return ZstMethod.build_local_methods(recv(socket).data)
 
     def reply_all_peer_methods(self, args):
         methodList = {}
@@ -220,7 +263,7 @@ class ZstNode(object):
             name=REPLY_ALL_PEER_METHODS,
             node=self.nodeId,
             output=methodList)
-        ZstNode.send(self.reply, ZstNode.OK, request)
+        send(self.reply, ZstNode.OK, request)
 
     # ----------------------------------------------------------
     # Publish updates from a node method to all interested nodes
@@ -233,12 +276,16 @@ class ZstNode(object):
         # Only update local values on methods WE own
         if method.node == self.id:
             method.output = methodvalue
-            ZstNode.send(self.publisher, method.name, method)
+            send(self.publisher, method.name, method)
         else:
             print "We don't own this method!"
         return methodvalue
 
-    def update_remote_method(self, method, methodargs):
+    def update_remote_method_by_name(self, methodname, methodargs=None):
+        method = self.methods[methodname]
+        return self.update_remote_method(method, methodargs)
+
+    def update_remote_method(self, method, methodargs=None):
         if method.node in self.peers:
             methodDict = method.as_dict()
             if ZstMethod.compare_arg_lists(methodDict[ZstMethod.METHOD_ARGS], methodargs):
@@ -246,68 +293,13 @@ class ZstNode(object):
                     name=method.name,
                     node=method.node,
                     args=methodargs)
-                ZstNode.send(self.publisher, method.name, methodData)
+                send(self.publisher, method.name, methodData)
             else:
                 print "Mismatch on arguments being sent to remote node!"
                 raise
         else:
             print "Method destination node not in connected peers list!"
         pass
-
-    # ----------------------------------------------
-    # Recieve updates from nodes we're interested in
-    # ----------------------------------------------
-    def receive_method_update(self, message):
-        print "Recieved method '{0}' from '{1}' with value '{2} and args {3}'".format(
-            message.method,
-            message.data.node,
-            message.data.output,
-            message.data.args)
-        if message.method in self.methods:
-            print "Matched local method: {0}".format(message.method)
-            self.methods[message.method].run(message.data)
-
-    # -----------------------
-    # Send / Recieve handlers
-    # -----------------------
-    @staticmethod
-    def send(socket, method, methodData=None):
-        try:
-            outData = {}
-            if methodData:
-                outData = methodData.as_dict()
-            socket.send_multipart([str(method), json.dumps(outData)])
-        except Exception, e:
-            print e
-
-    @staticmethod
-    def recv(socket, noblock=None):
-        try:
-            msg = socket.recv_multipart(
-                zmq.NOBLOCK) if noblock else socket.recv_multipart()
-            method = msg[0]
-            method = method if method else None
-            data = json.loads(msg[1]) if msg[1] else None
-            if data:
-                methodData = ZstMethod(
-                    name=data[ZstMethod.METHOD_NAME],
-                    node=data[ZstMethod.METHOD_ORIGIN_NODE],
-                    accessMode=data[ZstMethod.METHOD_ACCESSMODE],
-                    args=data[ZstMethod.METHOD_ARGS],
-                    output=data[ZstMethod.METHOD_OUTPUT])
-                return MethodMessage(method=method, data=methodData)
-            else:
-                return MethodMessage(method=method, data=data)
-        except zmq.ZMQError, e:
-            print e
-        return None
-
-
-class MethodMessage():
-
-    def __init__(self, method, data):
-        self.method = method
-        self.data = data
 
 
 # Test cases
@@ -317,8 +309,10 @@ if __name__ == '__main__':
 
         node = ZstNode(sys.argv[1], sys.argv[2])
         node.request_register_node(node.stage)
-        node.request_register_method("testMethod", ZstMethod.WRITE, {'arg1': 0, 'arg2': 0, 'arg3': 0})
-        node.request_register_method("anotherTestMethod", ZstMethod.READ, {'arg1': 1, 'arg2': 2, 'arg3': 3})
+        node.request_register_method(
+            "testMethod", ZstMethod.WRITE, {'arg1': 0, 'arg2': 0, 'arg3': 0})
+        node.request_register_method(
+            "anotherTestMethod", ZstMethod.READ, {'arg1': 1, 'arg2': 2, 'arg3': 3})
 
         print "\nListing stage nodes:"
         print "--------------------"

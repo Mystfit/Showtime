@@ -39,6 +39,8 @@ class ZstMethod():
 
     @staticmethod
     def compare_arg_lists(args1, args2):
+        if not args1 and not args2:
+            return True
         for name, value in args1.iteritems():
             if name not in args2:
                 return False

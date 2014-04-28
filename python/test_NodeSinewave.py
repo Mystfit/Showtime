@@ -38,4 +38,5 @@ while True:
         time.sleep(1. / sinwave.speed)
         print sinwave.sinewave()
     except KeyboardInterrupt:
+        sinwave.node.close()
         break

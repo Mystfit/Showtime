@@ -38,6 +38,7 @@ namespace ZST {
         Dictionary<string, ZstMethod> m_methods;
 
         //Sockets
+        public NetMQSocket request { get { return m_request; } }
     	protected NetMQSocket m_request;
     	protected NetMQSocket m_subscriber;
 
@@ -62,14 +63,29 @@ namespace ZST {
 			m_methods = methods;
 		}
 
-        /// <summary>
-        /// Connect to this peer's reply socket.
-        /// </summary>
+        /// <summary>Connect to this peer's reply socket</summary>
 		public void connectToReply(NetMQContext context)
         {
 			m_request = context.CreateRequestSocket();
 			m_request.Connect(m_replyAddress);
 		}
+
+        /// <summary>Close all sockets connected to this peer</summary>
+        public void disconnect()
+        {
+            if (m_request != null)
+            {
+                m_request.Dispose();
+                m_request = null;
+            }
+
+            if (m_subscriber != null)
+            {
+                m_subscriber.Dispose();
+                m_subscriber = null;
+            }
+        }
+
 
         /// <summary>
         /// Returns this class as a dictionary.

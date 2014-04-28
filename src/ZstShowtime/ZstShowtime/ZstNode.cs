@@ -25,17 +25,23 @@ namespace ZST
         public static string REPLY_NODE_PEERLINKS = "reply_node_peerlinks";
         public static string REPLY_METHOD_LIST = "reply_list_methods";
         public static string REPLY_ALL_PEER_METHODS = "reply_all_peer_methods";
+        public static string DISCONNECT_PEER = "disconnect_peer";
 
 
         // Member variables
         // ----------------
         protected string m_nodeId;
-        protected Dictionary<string, ZstMethod> m_methods;
+        
         protected Dictionary<string, ZstMethod> m_internalNodeMethods;
-        protected Dictionary<string, ZstPeerLink> m_peers;
         protected string m_stageAddress;
         protected string m_replyAddress;
         protected string m_publisherAddress;
+
+        public Dictionary<string, ZstMethod> methods { get { return m_methods; } }
+        protected Dictionary<string, ZstMethod> m_methods;
+        public Dictionary<string, ZstPeerLink> peers { get { return m_peers; } }
+        protected Dictionary<string, ZstPeerLink> m_peers;
+
 
         // Zmq variables
         protected NetMQContext m_ctx;
@@ -109,6 +115,8 @@ namespace ZST
             m_reply.ReceiveReady += handleReplyRequests;
             m_subscriber.ReceiveReady += receiveMethodUpdate;
 
+            //Register application exit event
+            //Application.ApplicationExit += new EventHandler(this.OnApplicationExit);
 
             // Intialize Poller
             m_pollerThread = new ZstPoller();
@@ -124,23 +132,60 @@ namespace ZST
             m_internalNodeMethods[REPLY_NODE_PEERLINKS] = new ZstMethod(REPLY_NODE_PEERLINKS, m_nodeId, ZstMethod.READ, null, replyNodePeerlinks);
             m_internalNodeMethods[REPLY_METHOD_LIST] = new ZstMethod(REPLY_METHOD_LIST, m_nodeId, ZstMethod.READ, null, replyRegisterNode);
             m_internalNodeMethods[REPLY_ALL_PEER_METHODS] = new ZstMethod(REPLY_ALL_PEER_METHODS, m_nodeId, ZstMethod.READ, null, replyRegisterNode);
+            m_internalNodeMethods[DISCONNECT_PEER] = new ZstMethod(DISCONNECT_PEER, m_nodeId, ZstMethod.READ, null, disconnectPeer);
+        }
+
+        /// <summary>Application exiting event handler</summary>
+        private void OnApplicationExit(object sender, EventArgs e)
+        {
+            close();
         }
 
         /// <summary>Close and dispose of all sockets/pollers/threads</summary>
-        public bool cleanup()
+        public bool close()
         {
             m_pollerThread.IsDone = true;
             m_pollerThread.Update();
+
+            //Disconnect from connected peers
+            foreach(KeyValuePair<string, ZstPeerLink> peer in m_peers){
+                Console.WriteLine("Requesting '" + peer.Key + "' to disconnect from us.");
+                send(peer.Value.request, DISCONNECT_PEER, new ZstMethod(DISCONNECT_PEER, m_nodeId));
+                peer.Value.disconnect();
+                m_peers.Remove(peer.Key);
+            }
+
+            //Disconnect from stage
+            if (m_stage != null)
+                send(m_stage, DISCONNECT_PEER, new ZstMethod(DISCONNECT_PEER, m_nodeId));
+                m_stage.Dispose();
 
             m_reply.Dispose();
             m_publisher.Dispose();
             m_subscriber.Dispose();
 
-            if (m_stage != null)
-                m_stage.Dispose();
-
             m_ctx.Dispose();
             return true;
+        }
+
+        /// <summary>Called by a peer requesting we close our connection to it</summary>
+        protected object disconnectPeer(ZstMethod methodData)
+        {
+            Console.WriteLine("Peer '" + methodData.node + "' is leaving.");
+            if (m_peers.Keys.Contains(methodData.node))
+            {
+                try{
+                    m_subscriber.Disconnect(m_peers[methodData.node].publisherAddress);
+                } catch(NetMQException e){
+                    throw e;
+                }
+
+                m_peers[methodData.node].disconnect();
+            }
+            send(m_reply, OK);
+            m_peers.Remove(methodData.node);
+           
+            return null;
         }
 
         /// <summary>Incoming request handler</summary>
@@ -221,6 +266,14 @@ namespace ZST
             m_peers[peer.name] = peer;
 
             Console.WriteLine("Connected to peer on " + peer.publisherAddress);
+        }
+
+        /// <summary> Requests a remote node to subscribe to our requests</summary>
+        public void connectToPeer(ZstPeerLink peer)
+        {
+            NetMQSocket socket = m_ctx.CreateRequestSocket();
+            socket.Connect(peer.replyAddress);
+            requestRegisterNode(socket);
         }
 
 
@@ -400,11 +453,32 @@ namespace ZST
         }
 
         /// <summary>Triggers a remote method with arguments</summary>
+        public void updateRemoteMethodByName(string name)
+        {
+            updateRemoteMethodByName(name, null); 
+        }
+
+        /// <summary>Triggers a remote method with arguments</summary>
+        public void updateRemoteMethodByName(string name, Dictionary<string, object> args)
+        {   
+            if(m_methods.Keys.Contains(name)){
+                ZstMethod method = m_methods[name];
+                updateRemoteMethod(method, args);
+            }
+        }
+
+        /// <summary>Triggers a remote method with arguments</summary>
+        public void updateRemoteMethod(ZstMethod method)
+        {
+            updateRemoteMethod(method, null);
+        }
+
+        /// <summary>Triggers a remote method with arguments</summary>
         public void updateRemoteMethod(ZstMethod method, Dictionary<string, object> args)
         {
             if (m_peers.Keys.Contains(method.node))
             {
-                if (ZstMethod.compareArgLists(args, m_peers[method.node].methods[method.name].args))
+                if (ZstMethod.compareArgLists(m_peers[method.node].methods[method.name].args, args))
                 {
                     ZstMethod methodRequest = new ZstMethod(method.name, method.node, method.accessMode, args);
                     send(m_publisher, method.name, methodRequest);

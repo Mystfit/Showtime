@@ -120,11 +120,23 @@ namespace ZST {
         /// </summary>
 		public static bool compareArgLists(Dictionary<string, object> args1, Dictionary<string, object> args2)
         {
-			foreach(string arg in args1.Keys){
-				if(!args2.Keys.Contains(arg))
-					return false;
-			}
-			return true;
+            if (args1 == null && args2 == null)
+                return true;
+
+            if (args1 != null)
+            {
+                foreach (string arg in args1.Keys)
+                {
+                    if (args2 != null)
+                    {
+                        if (!args2.Keys.Contains(arg))
+                            return false;
+                    }
+                }
+                return true;
+            }
+
+            return false;
 		}
 
 

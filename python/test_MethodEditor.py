@@ -4,6 +4,7 @@ import time
 from zst_node import *
 
 reader = ZstNode("MethodEditor", sys.argv[1])
+reader.start()
 nodeList = reader.request_node_peerlinks()
 
 print "Nodes on stage:"

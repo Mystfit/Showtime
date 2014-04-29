@@ -9,16 +9,17 @@ class ZstSocket(threading.Thread):
 
     TIMEOUT = 2.0
 
-    def __init__(self, ctx, sockettype, name=None):
-        threading.Thread.__init__(self)
+    def __init__(self, ctx, sockettype, queue, name=None):
+        threading.Thread.__init__(self, name=name)
         self.ctx = ctx
         self.exitFlag = 0
         self.poller = None
         self.name = name if name else "socket"
+        self.setDaemon(True)
 
         self.socket = self.ctx.socket(sockettype)
         self.socket.setsockopt(zmq.LINGER, 0)
-        self.inMailbox = Queue.LifoQueue()
+        self.inMailbox = queue
         self.outMailbox = Queue.LifoQueue()
 
         if sockettype == zmq.REP or sockettype == zmq.SUB:
@@ -41,29 +42,24 @@ class ZstSocket(threading.Thread):
         self.socket.close()
 
     def handle_outgoing(self):
-        print "Checking mailbox..."
         try:
             message = self.outMailbox.get(True, ZstSocket.TIMEOUT)
         except Queue.Empty:
             return
-        print "Message in mailbox. Sending..."
-        self.socket_send(message.method, message.data)
-        print "Sent"
+        self.send_immediate(message.method, message.data)
 
     def handle_requests(self):
         if self.poller:
             socklist = dict(self.poller.poll(ZstSocket.TIMEOUT))
             for socket in socklist:
-                message = self.socket_recv(zmq.DONTWAIT)
+                message = self.recv_immediate(zmq.DONTWAIT)
                 if message:
-                    print "Received message {0}. Putting in mailbox.".format(message.method)
                     self.inMailbox.put(message)
 
     def send(self, method, methodData=None):
-        print "Queuing a send in mailbox..."
         self.outMailbox.put(MethodMessage(method, methodData))
 
-    def socket_send(self, method, methodData=None):
+    def send_immediate(self, method, methodData=None):
         try:
             outData = {}
             if methodData:
@@ -74,12 +70,11 @@ class ZstSocket(threading.Thread):
 
     def recv(self):
         try:
-            print self.inMailbox
-            return self.inMailbox.get(True, ZstSocket.TIMEOUT)
+            return self.inMailbox.get()
         except Queue.Empty:
             return None
 
-    def socket_recv(self, noblock=None):
+    def recv_immediate(self, noblock=None):
         try:
             msg = self.socket.recv_multipart(zmq.NOBLOCK) if noblock else self.socket.recv_multipart()
             method = msg[0]

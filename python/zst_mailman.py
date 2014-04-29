@@ -1,28 +1,30 @@
 import threading
-import zmq
-from zst_socket import ZstSocket
+import Queue
 
+
+# Delivers messages to the main thread when available
 class ZstMailman(threading.Thread):
 
     TIMEOUT = 2.0
 
-    def __init__(self, ctx, messageCallback):
+    def __init__(self, messageCallback):
         threading.Thread.__init__(self)
-        self.ctx = ctx
         self.exitFlag = 0
-        self.poller = zmq.Poller()
         self.callback = messageCallback
-        self.start()
+        self.incoming = Queue.LifoQueue()
 
-    def stop():
+    def stop(self):
         self.exitFlag = 1
         self.join(ZstMailman.TIMEOUT)
 
+    def put(self, message):
+        self.incoming.put(message)
+
     def run(self):
         while not self.exitFlag:
-            self.handle_requests()
-
-    def handle_requests(self):
-        socklist = dict(self.poller.poll(ZstMailman.TIMEOUT))
-        for socket in socklist:
-            self.callback(recv(socket, zmq.DONTWAIT))
+            try:
+                message = self.incoming.get(True, ZstMailman.TIMEOUT)
+                if message:
+                    self.callback(message)
+            except Queue.Empty:
+                pass

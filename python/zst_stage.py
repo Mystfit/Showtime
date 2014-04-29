@@ -1,4 +1,5 @@
 import zmq
+import time
 from zst_node import ZstNode
 
 
@@ -6,9 +7,9 @@ class ZstStage(ZstNode):
 
     def __init__(self):
         ZstNode.__init__(self, 'stage')
-        self.start()
+        self.createStage()
 
-    def start(self):
+    def createStage(self):
         port = 6000
         address = "tcp://*:" + str(port)
         self.reply.socket.bind(address)
@@ -16,4 +17,12 @@ class ZstStage(ZstNode):
 
 if __name__ == '__main__':
     stage = ZstStage()
-    stage.listen()
+    stage.start()
+
+    try:
+        while True:
+            time.sleep(2)
+    except KeyboardInterrupt:
+        stage.stop()
+        stage.join(4.0)
+    print "Finished"

@@ -4,27 +4,32 @@ import time
 import threading
 from zst_node import *
 
-exitFlag = 0
 
 class Sinewave(threading.Thread):
     def __init__(self, reader, node, method, args):
         threading.Thread.__init__(self)
         self.reader = reader
         self.args = args
+        self.exitFlag = 0
         self.node = node
         self.method = method
 
+    def stop(self):
+        self.exitFlag = 1
+
     def run(self):
         count = 0
-        while not exitFlag:
-            count += 0.005
+        while not self.exitFlag:
+            count += 0.001
             count = count % 100
             value = (((math.sin(count) + 1) * 0.2) + 0.3) * 127
             self.args["value"] = value
             self.reader.update_remote_method(self.node.methods[self.method], self.args)
-            time.sleep(0.005)
+            time.sleep(0.001)
 
 reader = ZstNode("SinewaveWriter", sys.argv[1])
+reader.start()
+
 nodeList = reader.request_node_peerlinks()
 
 print "Nodes on stage:"
@@ -53,10 +58,10 @@ if nodeName in nodeList:
     sinewave.start()
     try:
         while True:
-            pass
+            time.sleep(2)
     except KeyboardInterrupt:
-        exitFlag = 1
-        sinewave.join()
-        reader.close()
+        sinewave.stop()
+        sinewave.join(2)
+        reader.stop()
+        reader.join(2)
         print "\nExiting..."
-        sys.exit(0)

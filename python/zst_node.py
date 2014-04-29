@@ -4,6 +4,7 @@ import socket
 import json
 import time
 import threading
+from zst_mailman import ZstMailman
 from zst_socket import ZstSocket
 from zst_method import ZstMethod
 from zst_peerLink import ZstPeerLink
@@ -54,6 +55,9 @@ class ZstNode(object):
         if self.stageAddress:
             self.stage.socket.connect(self.stageAddress)
 
+        # Create mailman
+        self.mailman = ZstMailman(self.ctx, self.receive_method_update)
+
 
     def close(self):
         print "PUB-->: Announcing that we're leaving."
@@ -61,6 +65,8 @@ class ZstNode(object):
 
         for peer, peerlink in self.peers.iteritems():
             peerlink.disconnect()
+
+        self.mailman.close()
 
         if self.stage:
             self.stage.stop()
@@ -71,6 +77,7 @@ class ZstNode(object):
         self.publisher.join(2.0)
         self.subscriber.stop()
         self.subscriber.join(2.0)
+
         self.ctx.destroy()
 
         time.sleep(0.5)

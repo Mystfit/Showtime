@@ -6,6 +6,9 @@ from zst_method import ZstMethod
 
 
 class ZstSocket(threading.Thread):
+
+    TIMEOUT = 2.0
+
     def __init__(self, ctx, sockettype, name=None):
         threading.Thread.__init__(self)
         self.ctx = ctx
@@ -26,7 +29,7 @@ class ZstSocket(threading.Thread):
 
     def stop(self):
         self.exitFlag = 1
-        self.join(2.0)
+        self.join(ZstSocket.TIMEOUT)
 
     def run(self):
         while not self.exitFlag:
@@ -40,7 +43,7 @@ class ZstSocket(threading.Thread):
     def handle_outgoing(self):
         print "Checking mailbox..."
         try:
-            message = self.outMailbox.get(True, 3)
+            message = self.outMailbox.get(True, ZstSocket.TIMEOUT)
         except Queue.Empty:
             return
         print "Message in mailbox. Sending..."
@@ -49,7 +52,7 @@ class ZstSocket(threading.Thread):
 
     def handle_requests(self):
         if self.poller:
-            socklist = dict(self.poller.poll(3))
+            socklist = dict(self.poller.poll(ZstSocket.TIMEOUT))
             for socket in socklist:
                 message = self.socket_recv(zmq.DONTWAIT)
                 if message:
@@ -72,7 +75,7 @@ class ZstSocket(threading.Thread):
     def recv(self):
         try:
             print self.inMailbox
-            return self.inMailbox.get(True, 3)
+            return self.inMailbox.get(True, ZstSocket.TIMEOUT)
         except Queue.Empty:
             return None
 

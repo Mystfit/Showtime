@@ -1,24 +1,28 @@
 import threading
+import zmq
 from zst_socket import ZstSocket
 
 class ZstMailman(threading.Thread):
 
-    def __init__(self):
+    TIMEOUT = 2.0
+
+    def __init__(self, ctx, messageCallback):
         threading.Thread.__init__(self)
-        self.sockets = {}
+        self.ctx = ctx
+        self.exitFlag = 0
         self.poller = zmq.Poller()
+        self.callback = messageCallback
+        self.start()
 
-    def add_socket(self, socket):
-
-        self.sockets[socket] = True
-        self.poller.register(socket, zmq.POLLIN)
-
-
-    def stop(self):
+    def stop():
         self.exitFlag = 1
+        self.join(ZstMailman.TIMEOUT)
 
     def run(self):
         while not self.exitFlag:
-            socklist = dict(self.poller.poll(3))
-            for socket in socklist:
-                message = self.socket_recv(zmq.DONTWAIT)
+            self.handle_requests()
+
+    def handle_requests(self):
+        socklist = dict(self.poller.poll(ZstMailman.TIMEOUT))
+        for socket in socklist:
+            self.callback(recv(socket, zmq.DONTWAIT))

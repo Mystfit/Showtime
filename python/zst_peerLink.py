@@ -24,10 +24,6 @@ class ZstPeerLink():
         if self.subscriber:
             self.subscriber.close()
 
-    def connect_to_reply(self, ctx):
-        self.request = ctx.socket(zmq.REQ)
-        self.request.connect(self.replyAddress)
-
     def as_dict(self):
         methodlist = {}
         for name, method in self.methods.iteritems():

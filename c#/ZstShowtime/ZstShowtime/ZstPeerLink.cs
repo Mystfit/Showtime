@@ -38,8 +38,16 @@ namespace ZST {
         Dictionary<string, ZstMethod> m_methods;
 
         //Sockets
-        public NetMQSocket request { get { return m_request; } }
+		public NetMQSocket request { 
+			get{ return m_request; } 
+			set{ m_request = value; }
+		}
     	protected NetMQSocket m_request;
+
+		public NetMQSocket subscriber { 
+			get{ return m_subscriber; } 
+			set{ m_subscriber = value; } 
+		}
     	protected NetMQSocket m_subscriber;
 
 
@@ -61,13 +69,6 @@ namespace ZST {
 			m_replyAddress = replyAddress;
 			m_publisherAddress = publisherAddress;
 			m_methods = methods;
-		}
-
-        /// <summary>Connect to this peer's reply socket</summary>
-		public void connectToReply(NetMQContext context)
-        {
-			m_request = context.CreateRequestSocket();
-			m_request.Connect(m_replyAddress);
 		}
 
         /// <summary>Close all sockets connected to this peer</summary>

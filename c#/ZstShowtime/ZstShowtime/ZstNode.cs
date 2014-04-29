@@ -76,8 +76,13 @@ namespace ZST
 
             m_ctx = NetMQContext.Create();
             m_reply = m_ctx.CreateResponseSocket();
+			m_reply.Options.Linger = System.TimeSpan.Zero;
+
             m_publisher = m_ctx.CreatePublisherSocket();
-            m_subscriber = m_ctx.CreateSubscriberSocket();
+			m_publisher.Options.Linger = System.TimeSpan.Zero;
+
+			m_subscriber = m_ctx.CreateSubscriberSocket();
+			m_subscriber.Options.Linger = System.TimeSpan.Zero;
 
             // Binding ports
             IPHostEntry host = Dns.GetHostEntry(Dns.GetHostName());
@@ -102,6 +107,7 @@ namespace ZST
             if (!string.IsNullOrEmpty(stageAddress))
             {
                 m_stage = m_ctx.CreateRequestSocket();
+				m_stage.Options.Linger = System.TimeSpan.Zero;
                 m_stage.Connect(m_stageAddress);
                 Console.WriteLine("Stage located at " + m_stage.Options.GetLastEndpoint);
                 Console.WriteLine("Node reply on address " + m_replyAddress);
@@ -112,7 +118,7 @@ namespace ZST
             m_subscriber.SubscribeToAll();
 
             // Bind event listeners to sockets
-            m_reply.ReceiveReady += handleReplyRequests;
+            m_reply.ReceiveReady += receiveMethodUpdate;
             m_subscriber.ReceiveReady += receiveMethodUpdate;
 
             //Register application exit event
@@ -120,8 +126,8 @@ namespace ZST
 
             // Intialize Poller
             m_pollerThread = new ZstPoller();
-            m_pollerThread.poller.AddSocket(m_subscriber);
-            m_pollerThread.poller.AddSocket(m_reply);
+            m_pollerThread.AddSocket(m_subscriber);
+            m_pollerThread.AddSocket(m_reply);
             m_pollerThread.Start();
         }
 
@@ -144,26 +150,30 @@ namespace ZST
         /// <summary>Close and dispose of all sockets/pollers/threads</summary>
         public bool close()
         {
-            m_pollerThread.IsDone = true;
-            m_pollerThread.Update();
+			//Announce that we're leaving to all connected peers
+            ZstIo.send(m_publisher, DISCONNECT_PEER, new ZstMethod(DISCONNECT_PEER, m_nodeId));
 
-            //Disconnect from connected peers
-            foreach(KeyValuePair<string, ZstPeerLink> peer in m_peers){
-                Console.WriteLine("Requesting '" + peer.Key + "' to disconnect from us.");
-                send(peer.Value.request, DISCONNECT_PEER, new ZstMethod(DISCONNECT_PEER, m_nodeId));
-                peer.Value.disconnect();
-                m_peers.Remove(peer.Key);
-            }
-
-            //Disconnect from stage
-            if (m_stage != null)
-                send(m_stage, DISCONNECT_PEER, new ZstMethod(DISCONNECT_PEER, m_nodeId));
+			//Clear stage
+            if (m_stage != null) 
                 m_stage.Dispose();
 
-            m_reply.Dispose();
-            m_publisher.Dispose();
-            m_subscriber.Dispose();
+			//Disconnect all peers
+			foreach(KeyValuePair<string, ZstPeerLink> peer in m_peers)
+				peer.Value.disconnect();
+			m_peers.Clear();
 
+            //Exit poller
+            m_pollerThread.IsDone = true;
+            m_pollerThread.Update();
+			m_pollerThread.Abort();
+			m_pollerThread = null;
+
+			//Clear publisher
+            m_publisher.Dispose();
+			m_subscriber.Dispose();
+			m_reply.Dispose();
+
+			//Clear context
             m_ctx.Dispose();
             return true;
         }
@@ -181,22 +191,9 @@ namespace ZST
                 }
 
                 m_peers[methodData.node].disconnect();
+                m_peers.Remove(methodData.node);
             }
-            send(m_reply, OK);
-            m_peers.Remove(methodData.node);
-           
             return null;
-        }
-
-        /// <summary>Incoming request handler</summary>
-        protected void handleReplyRequests(object sender, NetMQSocketEventArgs e)
-        {
-            if (e.ReceiveReady)
-            {
-                MethodMessage msg = recv(e.Socket);
-                if (m_internalNodeMethods.Keys.Contains(msg.method))
-                    m_internalNodeMethods[msg.method].run(msg.data);
-            }
         }
 
         /// <summary>Method update handler</summary>
@@ -204,25 +201,31 @@ namespace ZST
         {
             if (e.ReceiveReady)
             {
-                MethodMessage msg = recv(e.Socket);
-                Console.Write("Recieved method '" + msg.method + "' from '" + msg.data.node);
-                if(msg.data.output != null)
-                    Console.Write("' with value '" + msg.data.output.ToString() + "'");
-                Console.WriteLine("");
+                MethodMessage msg = ZstIo.recv(e.Socket);
+                Console.Write("Recieved method '" + msg.method);
+                if (msg.data != null)
+                {
+                    if (msg.data.output != null)
+                        Console.Write("' from '" + msg.data.node + "' with value '" + msg.data.output.ToString() + "'");
+                    Console.WriteLine("");
+                }
+
                 if (m_methods.Keys.Contains(msg.method))
                     m_methods[msg.method].run(msg.data);
+                else if (m_internalNodeMethods.Keys.Contains(msg.method))
+                    m_internalNodeMethods[msg.method].run(msg.data);
             }
         }
 
 
         // Node registration
         //------------------
-        public void requestRegisterNode(){
-            requestRegisterNode(m_stage);
+        public bool requestRegisterNode(){
+            return requestRegisterNode(m_stage);
         }
 
         /// <summary>Request this node to be registered on another remote node</summary>
-        public void requestRegisterNode(NetMQSocket socket)
+        public bool requestRegisterNode(NetMQSocket socket)
         {
             Console.WriteLine("REQ-->: Requesting remote node to register our addresses. Reply:" + m_replyAddress + ", Publisher:" + m_publisherAddress);
             
@@ -231,13 +234,16 @@ namespace ZST
                 {ZstPeerLink.PUBLISHER_ADDRESS, m_publisherAddress}};
             ZstMethod request = new ZstMethod(REPLY_REGISTER_NODE, m_nodeId, "", requestArgs);
 
-            send(socket, REPLY_REGISTER_NODE, request); 
-            MethodMessage msg = recv(socket);
+            ZstIo.send(socket, REPLY_REGISTER_NODE, request); 
+            MethodMessage msg = ZstIo.recv(socket);
 
-            if (msg.method == OK)
+            if (msg.method == OK){
                 Console.WriteLine("REP<--: Remote node acknowledged our addresses. Reply:" + m_replyAddress + ", Publisher:" + m_publisherAddress);
-            else
+				return true;
+			} else { 
                 Console.WriteLine("REP<--:Remote node returned " + msg.method + " instead of " + OK);
+			}
+			return false;
         }
 
         /// <summary>Reply to another node's request for registration</summary>
@@ -253,7 +259,7 @@ namespace ZST
                 (string)methodData.args[ZstPeerLink.PUBLISHER_ADDRESS]);
 
             subscribeTo(m_peers[nodeId]);
-            send(m_reply, OK);
+            ZstIo.send(m_reply, OK);
             Console.WriteLine("Registered node '" + nodeId + "'. Reply:" + m_peers[nodeId].replyAddress + ", Publisher:" + m_peers[nodeId].publisherAddress);
             return null;
         }
@@ -272,8 +278,14 @@ namespace ZST
         public void connectToPeer(ZstPeerLink peer)
         {
             NetMQSocket socket = m_ctx.CreateRequestSocket();
+			socket.Options.Linger = System.TimeSpan.Zero;
             socket.Connect(peer.replyAddress);
-            requestRegisterNode(socket);
+            
+			if(requestRegisterNode(socket)){
+				if(!m_peers.Keys.Contains(peer.name))
+					m_peers[peer.name] = peer;
+				m_peers[peer.name].request = socket;
+			}
         }
 
 
@@ -316,8 +328,8 @@ namespace ZST
             m_methods[method] = new ZstMethod(method, m_nodeId, accessMode, args, callback);
 
             //Register method copy on remote node
-            send(socket, REPLY_REGISTER_METHOD, m_methods[method]);
-            MethodMessage msg = recv(socket);
+            ZstIo.send(socket, REPLY_REGISTER_METHOD, m_methods[method]);
+            MethodMessage msg = ZstIo.recv(socket);
 
             if (msg.method == OK)
                 Console.WriteLine("REP<--: Remote node acknowledged our method '" + method + "'");
@@ -340,7 +352,7 @@ namespace ZST
 
             m_peers[methodData.node].methods[methodData.name] = localMethod;
 
-            send(m_reply, OK);
+            ZstIo.send(m_reply, OK);
             Console.WriteLine("Registered method '" + localMethod.name + "'. Origin:" + localMethod.node + ", AccessMode:" + localMethod.accessMode + ", Args:" + localMethod.args);
             return null;
         }
@@ -357,8 +369,8 @@ namespace ZST
         /// <summary>Request a dictionary of peers nodes linked to the remote node</summary>
         public Dictionary<string, ZstPeerLink> requestNodePeerlinks(NetMQSocket socket)
         {
-            send(socket, REPLY_NODE_PEERLINKS);
-            Dictionary<string, object> peerDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(recv(socket).data.output.ToString());
+            ZstIo.send(socket, REPLY_NODE_PEERLINKS);
+            Dictionary<string, object> peerDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(ZstIo.recv(socket).data.output.ToString());
             return ZstPeerLink.buildLocalPeerlinks(peerDict);
         }
 
@@ -370,7 +382,7 @@ namespace ZST
                 peerDict[peer.Key] = peer.Value.as_dict();
             ZstMethod request = new ZstMethod(REPLY_NODE_PEERLINKS, m_nodeId, "", null);
             request.output = peerDict;
-            send(m_reply, OK, request);
+            ZstIo.send(m_reply, OK, request);
             return null;
         }
 
@@ -385,8 +397,8 @@ namespace ZST
         /// <summary>Request a dictionary of methods on a remote node</summary>
         public Dictionary<string, ZstMethod> requestMethodList(NetMQSocket socket)
         {
-            send(socket, REPLY_METHOD_LIST);
-            return ZstMethod.buildLocalMethods((Dictionary<string, object>)recv(socket).data.output);
+            ZstIo.send(socket, REPLY_METHOD_LIST);
+            return ZstMethod.buildLocalMethods((Dictionary<string, object>)ZstIo.recv(socket).data.output);
         }
 
         /// <summary>Reply with a list of methods this node owns</summary>
@@ -397,7 +409,7 @@ namespace ZST
                 methodDict[method.Key] = method.Value.as_dict();
             ZstMethod request = new ZstMethod(REPLY_NODE_PEERLINKS, m_nodeId, "", null);
             request.output = methodDict;
-            send(m_reply, OK, request);
+            ZstIo.send(m_reply, OK, request);
             return null;
         }
 
@@ -413,8 +425,8 @@ namespace ZST
         /// <summary>Request a list of all available methods provided by all connected peers on the remote node</summary>
         public Dictionary<string, ZstMethod> requestAllPeerMethods(NetMQSocket socket)
         {
-            send(socket, REPLY_METHOD_LIST);
-            return ZstMethod.buildLocalMethods((Dictionary<string, object>)recv(socket).data.output);
+            ZstIo.send(socket, REPLY_METHOD_LIST);
+            return ZstMethod.buildLocalMethods((Dictionary<string, object>)ZstIo.recv(socket).data.output);
         }
 
         /// <summary>Reply with a list of all available methods provided by all connected peers on the remote node</summary>
@@ -428,7 +440,7 @@ namespace ZST
             }
             ZstMethod request = new ZstMethod(REPLY_NODE_PEERLINKS, m_nodeId, "", null);
             request.output = methodDict;
-            send(m_reply, OK, request);
+            ZstIo.send(m_reply, OK, request);
             return null;
         }
 
@@ -448,7 +460,7 @@ namespace ZST
             if (method.node == m_nodeId)
             {
                 method.output = value;
-                send(m_publisher, method.name, method);
+                ZstIo.send(m_publisher, method.name, method);
             }
         }
 
@@ -481,64 +493,13 @@ namespace ZST
                 if (ZstMethod.compareArgLists(m_peers[method.node].methods[method.name].args, args))
                 {
                     ZstMethod methodRequest = new ZstMethod(method.name, method.node, method.accessMode, args);
-                    send(m_publisher, method.name, methodRequest);
+                    ZstIo.send(m_publisher, method.name, methodRequest);
                 }
             }
         }
 
 
-        // Remote send/recieve methods
-        // ---------------------------
-        /// <summary>Send a message to a remote node</summary>
-        protected static void send(NetMQSocket socket, string method)
-        {
-            send(socket, method, null);
-        }
-
-        /// <summary>Send a message to a remote node using method info</summary>
-        protected static void send(NetMQSocket socket, string method, ZstMethod methodData)
-        {
-            NetMQMessage message = new NetMQMessage();
-            message.Append(method);
-            if (methodData != null)
-            {
-                string data = JsonConvert.SerializeObject(methodData.as_dict());
-                JsonConvert.SerializeObject(data, Formatting.Indented);
-                message.Append(data);
-            }
-            else
-            {
-                message.Append("{}");
-            }
-            socket.SendMessage(message);
-        }
-
-        /// <summary>Receive a message from a remote node</summary>
-        protected static MethodMessage recv(NetMQSocket socket)
-        {
-            return recv(socket, false);
-        }
-
-        /// <summary>Receive a message from a remote node</summary>
-        protected static MethodMessage recv(NetMQSocket socket, bool dontWait)
-        {
-            try
-            {
-                NetMQMessage message = socket.ReceiveMessage(dontWait);
-                string method = message[0].ConvertToString();
-
-                //Dictionary<string, object> data = new Dictionary<string, object>();
-                string jsonStr = (message[1].ConvertToString());
-                Dictionary<string, object> data = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonStr);
-
-                return new MethodMessage(method, ZstMethod.dictToZstMethod(data));
-            }
-            catch (NetMQException e)
-            {
-
-            }
-            return new MethodMessage("", null);
-        }
+        
     }
 
 

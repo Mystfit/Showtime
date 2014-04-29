@@ -18,10 +18,7 @@ methodName = str(raw_input("Enter a method to control: "))
 if nodeName in nodeList:
     node = nodeList[nodeName]
     reader.subscribe_to(node)
-
-    socket = reader.ctx.socket(zmq.REQ)
-    socket.connect(node.replyAddress)
-    reader.request_register_node(socket)
+    reader.connect_to_peer(node)
 
     time.sleep(1)
 

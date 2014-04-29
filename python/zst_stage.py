@@ -11,8 +11,8 @@ class ZstStage(ZstNode):
     def start(self):
         port = 6000
         address = "tcp://*:" + str(port)
-        self.reply.bind(address)
-        print "Stage active on address " + self.reply.getsockopt(zmq.LAST_ENDPOINT)
+        self.reply.socket.bind(address)
+        print "Stage active on address " + self.reply.socket.getsockopt(zmq.LAST_ENDPOINT)
 
 if __name__ == '__main__':
     stage = ZstStage()

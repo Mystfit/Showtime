@@ -8,6 +8,7 @@ from zst_node import *
 class Sinewave(threading.Thread):
     def __init__(self, reader, node, method, args):
         threading.Thread.__init__(self)
+        self.setDaemon(True)
         self.reader = reader
         self.args = args
         self.exitFlag = 0
@@ -47,9 +48,7 @@ if nodeName in nodeList:
     reader.connect_to_peer(node)
 
     time.sleep(1)
-    #reader.handle_requests()
 
-    #args = {'deviceindex': 0, 'trackindex': 4, 'parameterindex': 1, 'value': value}
     args = {}
     for argname, argvalue in node.methods[methodName].args.iteritems():
         args[argname] = raw_input("Enter a value for the argument " + str(argname) + ": ")
@@ -58,10 +57,8 @@ if nodeName in nodeList:
     sinewave.start()
     try:
         while True:
-            time.sleep(2)
+            time.sleep(1)
     except KeyboardInterrupt:
         sinewave.stop()
-        sinewave.join(2)
-        reader.stop()
-        reader.join(2)
+        reader.close()
         print "\nExiting..."

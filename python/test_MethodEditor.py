@@ -1,5 +1,4 @@
 import sys
-import math
 import time
 from zst_node import *
 
@@ -33,5 +32,5 @@ if nodeName in nodeList:
             reader.update_remote_method(node.methods[methodName], args)
             time.sleep(1)
     except KeyboardInterrupt:
-        print "Exiting"
         reader.close()
+        print "Exiting"

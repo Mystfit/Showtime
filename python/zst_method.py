@@ -3,6 +3,7 @@ class ZstMethod():
     # Message constants
     READ = "read"
     WRITE = "write"
+    RESPONDER = "responder"
     METHOD_LIST = "zst_method_list"
     METHOD_NAME = "zst_method_name"
     METHOD_ORIGIN_NODE = "zst_method_orig"
@@ -10,13 +11,14 @@ class ZstMethod():
     METHOD_ACCESSMODE = "zst_method_Accessmode"
     METHOD_OUTPUT = "zst_method_output"
 
-    def __init__(self, name, node, accessMode=None, args=None, callback=None, output=None):
+    def __init__(self, name, node, accessMode=None, args=None, callback=None, output=None, isReplier=False):
         self.name = name
         self.node = node
         self.accessMode = accessMode
         self.args = args
         self.output = output
         self.callback = callback
+        self.isReplier = isReplier
 
     def run(self, args):
         if not self.callback:

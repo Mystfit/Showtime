@@ -1,9 +1,9 @@
 import sys
-import math
 import time
 from zst_node import *
 
-reader = ZstNode("MethodEditor", sys.argv[1])
+reader = ZstNode("SongLayout", sys.argv[1])
+reader.start()
 nodeList = reader.request_node_peerlinks()
 
 print "Nodes on stage:"
@@ -18,9 +18,12 @@ reader.connect_to_peer(node)
 
 time.sleep(1)
 
-count = 0
+#reader.update_remote_method(node.methods["get_song_layout"], None)
+print "Received:" + str(reader.echo_remote_method(node.methods["get_song_layout"]).output)
+
 try:
-    print reader.echo_remote_method(node.methods["get_song_layout"], None)
+    while True:
+        time.sleep(1)
 except KeyboardInterrupt:
     print "Exiting"
     reader.close()

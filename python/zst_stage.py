@@ -21,8 +21,8 @@ if __name__ == '__main__':
 
     try:
         while True:
-            time.sleep(2)
+            time.sleep(1)
     except KeyboardInterrupt:
-        stage.stop()
-        stage.join(4.0)
+        stage.close()
+
     print "Finished"

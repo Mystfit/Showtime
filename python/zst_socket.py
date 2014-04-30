@@ -2,12 +2,11 @@ import threading
 import zmq
 import json
 import Queue
+from zst_base import ZstBase
 from zst_method import ZstMethod
 
 
 class ZstSocket(threading.Thread):
-
-    TIMEOUT = 2.0
 
     def __init__(self, ctx, sockettype, queue, name=None):
         threading.Thread.__init__(self, name=name)
@@ -30,7 +29,7 @@ class ZstSocket(threading.Thread):
 
     def stop(self):
         self.exitFlag = 1
-        self.join(ZstSocket.TIMEOUT)
+        self.join(ZstBase.TIMEOUT)
 
     def run(self):
         while not self.exitFlag:
@@ -43,14 +42,14 @@ class ZstSocket(threading.Thread):
 
     def handle_outgoing(self):
         try:
-            message = self.outMailbox.get(True, ZstSocket.TIMEOUT)
+            message = self.outMailbox.get(True, ZstBase.TIMEOUT)
         except Queue.Empty:
             return
         self.send_immediate(message.method, message.data)
 
     def handle_requests(self):
         if self.poller:
-            socklist = dict(self.poller.poll(ZstSocket.TIMEOUT))
+            socklist = dict(self.poller.poll(ZstBase.TIMEOUT))
             for socket in socklist:
                 message = self.recv_immediate(zmq.DONTWAIT)
                 if message:
@@ -70,7 +69,7 @@ class ZstSocket(threading.Thread):
 
     def recv(self):
         try:
-            return self.inMailbox.get()
+            return self.inMailbox.get(True, ZstBase.TIMEOUT)
         except Queue.Empty:
             return None
 

@@ -19,7 +19,7 @@ reader.connect_to_peer(node)
 time.sleep(1)
 
 #reader.update_remote_method(node.methods["get_song_layout"], None)
-print "Received:" + str(reader.echo_remote_method(node.methods["get_song_layout"]).output)
+print "Received:" + str(reader.update_remote_method(node.methods["get_song_layout"]).output)
 
 try:
     while True:

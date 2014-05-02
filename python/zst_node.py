@@ -13,6 +13,7 @@ class ZstNode(ZstBase):
     # Message constants
     REPLY = "zst_reply"
     OK = "zst_ok"
+    ERR = "zst_err"
 
     # Event action types
     PUBLISH_METHODS_CHANGED = "zst_act_announce_method_change"
@@ -279,12 +280,12 @@ class ZstNode(ZstBase):
             print "We don't own this method!"
         return methodvalue
 
-    def update_remote_method_by_name(self, methodname, methodargs=None, echosocket=False):
+    def update_remote_method_by_name(self, methodname, methodargs=None):
         method = self.methods[methodname]
         return self.update_remote_method(method, methodargs)
 
-    def update_remote_method(self, method, methodargs=None, echosocket=False):
-        socket = echosocket if echosocket else self.publisher
+    def update_remote_method(self, method, methodargs=None):
+        socket = self.peers[method.node].request if method.accessMode == ZstMethod.RESPONDER else self.publisher
         if method.node in self.peers:
             methodDict = method.as_dict()
             if ZstMethod.compare_arg_lists(methodDict[ZstMethod.METHOD_ARGS], methodargs):
@@ -293,20 +294,14 @@ class ZstNode(ZstBase):
                     node=method.node,
                     args=methodargs)
                 socket.send_immediate(method.name, methodData)
-                if echosocket:
-                    return socket.recv_immediate()
+                if method.accessMode == ZstMethod.RESPONDER:
+                    return socket.recv_immediate().data
             else:
                 print "Mismatch on arguments being sent to remote node!"
                 raise
         else:
             print "Method destination node not in connected peers list!"
-        pass
-
-    def echo_remote_method(self, method, methodargs=None):
-        message = self.update_remote_method(method, methodargs, self.peers[method.node].request)
-        if message:
-            return message.data
-        return
+        return None
 
 
 # Test cases

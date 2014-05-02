@@ -11,14 +11,13 @@ class ZstMethod():
     METHOD_ACCESSMODE = "zst_method_Accessmode"
     METHOD_OUTPUT = "zst_method_output"
 
-    def __init__(self, name, node, accessMode=None, args=None, callback=None, output=None, isReplier=False):
+    def __init__(self, name, node, accessMode=None, args=None, callback=None, output=None):
         self.name = name
         self.node = node
         self.accessMode = accessMode
         self.args = args
         self.output = output
         self.callback = callback
-        self.isReplier = isReplier
 
     def run(self, args):
         if not self.callback:
@@ -47,7 +46,6 @@ class ZstMethod():
             if name not in args2:
                 return False
         return True
-
 
     @staticmethod
     def build_local_methods(methods):

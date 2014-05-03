@@ -22,6 +22,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZstStage", "ZstStage\ZstSta
 		{A9AE40FF-1A21-414A-9FE7-3BE13644CC6D} = {A9AE40FF-1A21-414A-9FE7-3BE13644CC6D}
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZstGetSongLayout", "ZstGetSongLayout\ZstGetSongLayout.csproj", "{18D7CF69-9112-49B8-8A4E-2A07094F46FF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,6 +50,10 @@ Global
 		{CA5A98DC-0E4F-4B99-9277-CCA429310109}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CA5A98DC-0E4F-4B99-9277-CCA429310109}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CA5A98DC-0E4F-4B99-9277-CCA429310109}.Release|Any CPU.Build.0 = Release|Any CPU
+		{18D7CF69-9112-49B8-8A4E-2A07094F46FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{18D7CF69-9112-49B8-8A4E-2A07094F46FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{18D7CF69-9112-49B8-8A4E-2A07094F46FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{18D7CF69-9112-49B8-8A4E-2A07094F46FF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

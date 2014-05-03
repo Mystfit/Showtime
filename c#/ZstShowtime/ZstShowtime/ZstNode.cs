@@ -77,6 +77,7 @@ namespace ZST
             m_ctx = NetMQContext.Create();
             m_reply = m_ctx.CreateResponseSocket();
 			m_reply.Options.Linger = System.TimeSpan.Zero;
+            m_reply.Options.ReceiveTimeout = System.TimeSpan.FromSeconds(2);
 
             m_publisher = m_ctx.CreatePublisherSocket();
 			m_publisher.Options.Linger = System.TimeSpan.Zero;
@@ -210,10 +211,22 @@ namespace ZST
                     Console.WriteLine("");
                 }
 
+                //Run local methods if we receive an update remotely to do so
                 if (m_methods.Keys.Contains(msg.method))
                     m_methods[msg.method].run(msg.data);
                 else if (m_internalNodeMethods.Keys.Contains(msg.method))
                     m_internalNodeMethods[msg.method].run(msg.data);
+
+                //Run local callbacks if they're set to run when the remote method updates
+                if (m_peers.Keys.Contains(msg.data.node))
+                {
+                    if (m_peers[msg.data.node].methods.Keys.Contains(msg.method))
+                    {
+                        if (m_peers[msg.data.node].methods[msg.method].callback != null) {
+                            m_peers[msg.data.node].methods[msg.method].callback(msg.data);
+                        } 
+                    }
+                }
             }
         }
 
@@ -258,14 +271,14 @@ namespace ZST
                 (string)methodData.args[ZstPeerLink.REPLY_ADDRESS],
                 (string)methodData.args[ZstPeerLink.PUBLISHER_ADDRESS]);
 
-            subscribeTo(m_peers[nodeId]);
+            subscribeToNode(m_peers[nodeId]);
             ZstIo.send(m_reply, OK);
             Console.WriteLine("Registered node '" + nodeId + "'. Reply:" + m_peers[nodeId].replyAddress + ", Publisher:" + m_peers[nodeId].publisherAddress);
             return null;
         }
 
         /// <summary> Subscribe to messages coming from an external node</summary>
-        public void subscribeTo(ZstPeerLink peer)
+        public void subscribeToNode(ZstPeerLink peer)
         {
             m_subscriber.Connect(peer.publisherAddress);
             m_subscriber.SubscribeToAll();
@@ -279,6 +292,8 @@ namespace ZST
         {
             NetMQSocket socket = m_ctx.CreateRequestSocket();
 			socket.Options.Linger = System.TimeSpan.Zero;
+            socket.Options.ReceiveTimeout = System.TimeSpan.FromSeconds(2);
+
             socket.Connect(peer.replyAddress);
             
 			if(requestRegisterNode(socket)){
@@ -459,49 +474,75 @@ namespace ZST
         {
             if (method.node == m_nodeId)
             {
+                NetMQSocket socket;
+                if (method.accessMode == ZstMethod.RESPONDER)
+                    socket = m_reply;
+                else
+                    socket = m_publisher;
+
                 method.output = value;
-                ZstIo.send(m_publisher, method.name, method);
+                ZstIo.send(socket, method.name, method);
             }
         }
 
         /// <summary>Triggers a remote method with arguments</summary>
-        public void updateRemoteMethodByName(string name)
+        public ZstMethod updateRemoteMethodByName(string name)
         {
-            updateRemoteMethodByName(name, null); 
+            return updateRemoteMethodByName(name, null); 
         }
 
         /// <summary>Triggers a remote method with arguments</summary>
-        public void updateRemoteMethodByName(string name, Dictionary<string, object> args)
+        public ZstMethod updateRemoteMethodByName(string name, Dictionary<string, object> args)
         {   
             if(m_methods.Keys.Contains(name)){
                 ZstMethod method = m_methods[name];
-                updateRemoteMethod(method, args);
+                return updateRemoteMethod(method, args);
             }
+            return null;
         }
 
         /// <summary>Triggers a remote method with arguments</summary>
-        public void updateRemoteMethod(ZstMethod method)
+        public ZstMethod updateRemoteMethod(ZstMethod method)
         {
-            updateRemoteMethod(method, null);
+            return updateRemoteMethod(method, null);
         }
 
         /// <summary>Triggers a remote method with arguments</summary>
-        public void updateRemoteMethod(ZstMethod method, Dictionary<string, object> args)
+        public ZstMethod updateRemoteMethod(ZstMethod method, Dictionary<string, object> args)
         {
+            NetMQSocket socket;
+            if(method.accessMode == ZstMethod.RESPONDER)
+                socket = m_peers[method.node].request;
+            else
+                socket = m_publisher;
+ 
             if (m_peers.Keys.Contains(method.node))
             {
                 if (ZstMethod.compareArgLists(m_peers[method.node].methods[method.name].args, args))
                 {
                     ZstMethod methodRequest = new ZstMethod(method.name, method.node, method.accessMode, args);
-                    ZstIo.send(m_publisher, method.name, methodRequest);
+                    ZstIo.send(socket, method.name, methodRequest);
+
+                    if (methodRequest.accessMode == ZstMethod.RESPONDER)
+                    {
+                        return ZstIo.recv(socket).data;
+                    }
                 }
             }
+
+            return null;
         }
 
 
-        
+        /// <summary>Subscribe to a remote method publishing updates</summary>
+        public void subscribeToMethod(ZstMethod method, Func<ZstMethod, object> callback)
+        {
+            if (m_peers.Keys.Contains(method.node))
+            {
+                m_peers[method.node].methods[method.name].callback = callback;
+            }
+        }
     }
-
 
 
     /// <summary>Struct to hold message information</summary>

@@ -8,6 +8,7 @@ namespace ZST {
 	public class ZstMethod {
 		public static string READ = "read";
 		public static string WRITE = "write";
+        public static string RESPONDER = "responder";
 		public static string METHOD_LIST = "zst_method_list";
 		public static string METHOD_NAME = "zst_method_name";
 		public static string METHOD_ORIGIN_NODE = "zst_method_orig";
@@ -16,33 +17,23 @@ namespace ZST {
 		public static string METHOD_OUTPUT = "zst_method_output";
 
 
-        /// <summary>
-        /// Get the name of this node.
-        /// </summary>
+        /// <summary>Get the name of this node</summary>
         public string name { get { return m_name; } }
         protected string m_name;
 
-        /// <summary>
-        /// Get the owner of this method.
-        /// </summary>
+        /// <summary>Get the owner of this method</summary>
         public string node { get { return m_node; } }
 		protected string m_node;
 
-        /// <summary>
-        /// Get the access mode of this method.
-        /// </summary>
+        /// <summary>Get the access mode of this method</summary>
         public string accessMode { get { return m_accessMode; } }
 		protected string m_accessMode;
 
-        /// <summary>
-        /// Get the arguments for this method.
-        /// </summary>
+        /// <summary> Get the arguments for this method</summary>
         public Dictionary<string, object> args { get { return m_args; } }
         protected Dictionary<string, object> m_args;
 
-        /// <summary>
-        /// Get the stored output value of this method.
-        /// </summary>
+        /// <summary>Get the stored output value of this method</summary>
         public object output
         {
             get { return m_output; }
@@ -50,11 +41,12 @@ namespace ZST {
         }
         protected object m_output;
 
-        /// <summary>
-        /// Reference to the actual method this wrapper controls.
-        /// </summary>
+        /// <summary>Reference to the actual method this wrapper controls</summary>
         protected Func<ZstMethod, object> m_callback;
-
+        public Func<ZstMethod, object> callback { 
+            get { return m_callback; } 
+            set { m_callback = value; } 
+        }
 
         // Constructors
         // ------------

@@ -13,29 +13,21 @@ namespace ZST {
    		public static string NAME = "zst_key_name";
     	public static string METHOD_LIST = "zst_method_list";
 
-        /// <summary>
-        /// Get the name of this node.
-        /// </summary>
+        /// <summary>Get the name of this node</summary>
         public string name { get { return m_name; } }
         protected string m_name;
 
-        /// <summary>
-        /// Get the address of this remote node's reply socket.
-        /// </summary>
+        /// <summary>Get the address of this remote node's reply socket.</summary>
         public string replyAddress { get { return m_replyAddress; } }
         protected string m_replyAddress;
 
-        /// <summary>
-        /// Get the address of this remote node's publisher socket.
-        /// </summary>
+        /// <summary>Get the address of this remote node's publisher socket.</summary>
         public string publisherAddress { get { return m_publisherAddress; } }
         protected string m_publisherAddress;
 
-        /// <summary>
-        /// Get the method references for this remote peer.
-        /// </summary>
+        /// <summary>Get the method references for this remote peer.</summary>
         public Dictionary<string, ZstMethod> methods { get { return m_methods; } }
-        Dictionary<string, ZstMethod> m_methods;
+        protected Dictionary<string, ZstMethod> m_methods;
 
         //Sockets
 		public NetMQSocket request { 

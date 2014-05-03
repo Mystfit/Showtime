@@ -95,19 +95,19 @@ class ZstNode(ZstBase):
     # Recieve updates from nodes we're interested in
     # ----------------------------------------------
     def receive_message(self, message):
-        if message.data.node == self.id:
-            if message.method in self.methods:
-                print "Matched local method '{0}' from '{1}' with value '{2} and args {3}'".format(
-                    message.method,
-                    message.data.node,
-                    message.data.output,
-                    message.data.args)
-                self.methods[message.method].run(message.data)
+        if message.method in self.methods:
+            print "Matched local method '{0}' from '{1}' with value '{2} and args {3}'".format(
+                message.method,
+                message.data.node,
+                message.data.output,
+                message.data.args)
+            self.methods[message.method].run(message.data)
 
-            if hasattr(self, message.method):
-                print "Matched internal method '{0}'".format(message.method)
-                getattr(self, message.method)(message.data)
-        else:
+        if hasattr(self, message.method):
+            print "Matched internal method '{0}'".format(message.method)
+            getattr(self, message.method)(message.data)
+
+        if isinstance(message.data, ZstMethod):
             if message.data.node in self.peers:
                 if message.method in self.peers[message.data.node].subscribedMethods:
                     self.peers[message.data.node].subscribedMethods[message.method](message.data)
@@ -316,12 +316,12 @@ class ZstNode(ZstBase):
 # Test cases
 if __name__ == '__main__':
 
-    class TestClass:
-        def __init__(self):
-            self.valueChangedCount = 0
+    # class TestClass:
+    #     def __init__(self):
+    #         self.valueChangedCount = 0
 
-        def incrementValueCHanged(self, methodData):
-            self.valueChangedCount += 1
+    #     def incrementValueChanged(self, methodData):
+    #         self.valueChangedCount += 1
 
 
     testClass = TestClass()
@@ -331,16 +331,15 @@ if __name__ == '__main__':
         node.start()
         nodeList = node.request_node_peerlinks()
         
-        liveNode = nodeList[nodeName]
-        node.subscribe_to(liveNode)
-        #node.connect_to_peer(liveNode)
-
-        node.subscribe_to_method(nodeList["LiveNode"].methods["value_changed"], testClass.incrementValueChanged)
+        # liveNode = nodeList["LiveNode"]
+        # node.subscribe_to(liveNode)
+        # node.connect_to_peer(liveNode)
+        # node.subscribe_to_method(liveNode.methods["value_updated"], testClass.incrementValueChanged)
 
         try:
             while True:
-                time.sleep(0.2)
-                print testClass.valueChangedCount
+                time.sleep(1)
+                # print testClass.valueChangedCount
         except KeyboardInterrupt:
             node.close()
             print "Finished"

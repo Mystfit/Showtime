@@ -20,9 +20,9 @@ class ZstPeerLink():
 
     def disconnect(self):
         if self.request:
-            self.request.close()
+            self.request.stop()
         if self.subscriber:
-            self.subscriber.close()
+            self.subscriber.stop()
 
     def as_dict(self):
         methodlist = {}

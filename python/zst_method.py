@@ -3,6 +3,7 @@ class ZstMethod():
     # Message constants
     READ = "read"
     WRITE = "write"
+    RESPONDER = "responder"
     METHOD_LIST = "zst_method_list"
     METHOD_NAME = "zst_method_name"
     METHOD_ORIGIN_NODE = "zst_method_orig"
@@ -45,7 +46,6 @@ class ZstMethod():
             if name not in args2:
                 return False
         return True
-
 
     @staticmethod
     def build_local_methods(methods):

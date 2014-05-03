@@ -31,12 +31,10 @@ if len(sys.argv) < 2:
 
 sinwave = SineWave("SineWaveGenerator", sys.argv[1])
 
-while True:
-    try:
+try:
+    while True:
         sinwave.node.handle_requests()
-
         time.sleep(1. / sinwave.speed)
         print sinwave.sinewave()
-    except KeyboardInterrupt:
-        sinwave.node.close()
-        break
+except KeyboardInterrupt:
+    sinwave.node.close()

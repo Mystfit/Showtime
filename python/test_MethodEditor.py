@@ -1,9 +1,9 @@
 import sys
-import math
 import time
 from zst_node import *
 
 reader = ZstNode("MethodEditor", sys.argv[1])
+reader.start()
 nodeList = reader.request_node_peerlinks()
 
 print "Nodes on stage:"
@@ -32,5 +32,5 @@ if nodeName in nodeList:
             reader.update_remote_method(node.methods[methodName], args)
             time.sleep(1)
     except KeyboardInterrupt:
-        print "Exiting"
         reader.close()
+        print "Exiting"

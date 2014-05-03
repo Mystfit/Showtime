@@ -17,6 +17,7 @@ class ZstPeerLink():
         self.request = None
         self.subscriber = None
         self.methods = methods if methods else {}
+        self.subscribedMethods = {}
 
     def disconnect(self):
         if self.request:

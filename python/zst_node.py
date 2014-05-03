@@ -95,17 +95,22 @@ class ZstNode(ZstBase):
     # Recieve updates from nodes we're interested in
     # ----------------------------------------------
     def receive_message(self, message):
-        if message.method in self.methods:
-            print "Matched local method '{0}' from '{1}' with value '{2} and args {3}'".format(
-                message.method,
-                message.data.node,
-                message.data.output,
-                message.data.args)
-            self.methods[message.method].run(message.data)
+        if message.data.node == self.id:
+            if message.method in self.methods:
+                print "Matched local method '{0}' from '{1}' with value '{2} and args {3}'".format(
+                    message.method,
+                    message.data.node,
+                    message.data.output,
+                    message.data.args)
+                self.methods[message.method].run(message.data)
 
-        if hasattr(self, message.method):
-            print "Matched internal method '{0}'".format(message.method)
-            getattr(self, message.method)(message.data)
+            if hasattr(self, message.method):
+                print "Matched internal method '{0}'".format(message.method)
+                getattr(self, message.method)(message.data)
+        else:
+            if message.data.node in self.peers:
+                if message.method in self.peers[message.data.node].subscribedMethods:
+                    self.peers[message.data.node].subscribedMethods[message.method](message.data)
 
     # ------------------------------------------------------
     # Request/Reply this node be registered to a remote peer
@@ -303,29 +308,39 @@ class ZstNode(ZstBase):
             print "Method destination node not in connected peers list!"
         return None
 
+    def subscribe_to_method(self, method, callback):
+        if method.node in self.peers:
+            self.peers[method.node].subscribedMethods[method.name] = callback
+
 
 # Test cases
 if __name__ == '__main__':
 
+    class TestClass:
+        def __init__(self):
+            self.valueChangedCount = 0
+
+        def incrementValueCHanged(self, methodData):
+            self.valueChangedCount += 1
+
+
+    testClass = TestClass()
+
     if len(sys.argv) > 2:
         node = ZstNode(sys.argv[1], sys.argv[2])
         node.start()
+        nodeList = node.request_node_peerlinks()
         
-        if node.request_register_node(node.stage):
-            node.request_register_method(
-                "testMethod", ZstMethod.WRITE, {'arg1': 0, 'arg2': 0, 'arg3': 0})
-            node.request_register_method(
-                "anotherTestMethod", ZstMethod.READ, {'arg1': 1, 'arg2': 2, 'arg3': 3})
+        liveNode = nodeList[nodeName]
+        node.subscribe_to(liveNode)
+        #node.connect_to_peer(liveNode)
 
-            print "\nListing stage nodes:"
-            print "--------------------"
-            nodeList = node.request_node_peerlinks(node.stage)
-            for name, peer in nodeList.iteritems():
-                print name, json.dumps(peer.as_dict(), indent=1, sort_keys=True)
+        node.subscribe_to_method(nodeList["LiveNode"].methods["value_changed"], testClass.incrementValueChanged)
 
         try:
             while True:
-                time.sleep(1)
+                time.sleep(0.2)
+                print testClass.valueChangedCount
         except KeyboardInterrupt:
             node.close()
             print "Finished"

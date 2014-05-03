@@ -109,8 +109,9 @@ class ZstNode(ZstBase):
 
         if isinstance(message.data, ZstMethod):
             if message.data.node in self.peers:
-                if message.method in self.peers[message.data.node].subscribedMethods:
-                    self.peers[message.data.node].subscribedMethods[message.method](message.data)
+                if message.method in self.peers[message.data.node].methods:
+                    if self.peers[message.data.node].methods[message.method].callback:
+                        self.peers[message.data.node].methods[message.method].callback(message.data)
 
     # ------------------------------------------------------
     # Request/Reply this node be registered to a remote peer
@@ -310,36 +311,21 @@ class ZstNode(ZstBase):
 
     def subscribe_to_method(self, method, callback):
         if method.node in self.peers:
-            self.peers[method.node].subscribedMethods[method.name] = callback
+            if method.name in self.peers[method.node].methods:
+                self.peers[method.node].methods[method.name].callback = callback
 
 
 # Test cases
 if __name__ == '__main__':
 
-    # class TestClass:
-    #     def __init__(self):
-    #         self.valueChangedCount = 0
-
-    #     def incrementValueChanged(self, methodData):
-    #         self.valueChangedCount += 1
-
-
-    testClass = TestClass()
-
     if len(sys.argv) > 2:
         node = ZstNode(sys.argv[1], sys.argv[2])
         node.start()
         nodeList = node.request_node_peerlinks()
-        
-        # liveNode = nodeList["LiveNode"]
-        # node.subscribe_to(liveNode)
-        # node.connect_to_peer(liveNode)
-        # node.subscribe_to_method(liveNode.methods["value_updated"], testClass.incrementValueChanged)
 
         try:
             while True:
                 time.sleep(1)
-                # print testClass.valueChangedCount
         except KeyboardInterrupt:
             node.close()
             print "Finished"

@@ -4,6 +4,7 @@ using NetMQ.Sockets;
 using System;
 using System.Net;
 using System.Linq;
+using System.Threading;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -34,6 +35,7 @@ namespace ZST
         
         protected Dictionary<string, ZstMethod> m_internalNodeMethods;
         protected string m_stageAddress;
+        protected int m_stagePort;
         protected string m_replyAddress;
         protected string m_publisherAddress;
 
@@ -54,10 +56,13 @@ namespace ZST
 
         // Constructors
         // ------------
-        public ZstNode(string nodeId)
+
+        public ZstNode(string nodeId, int stagePort)
         {
+            m_stagePort = stagePort;
             init(nodeId, "");
         }
+
         public ZstNode(string nodeId, string stageAddress)
         {
             init(nodeId, stageAddress);
@@ -70,20 +75,24 @@ namespace ZST
             m_internalNodeMethods = new Dictionary<string, ZstMethod>();
             m_peers = new Dictionary<string, ZstPeerLink>();
             m_stageAddress = stageAddress;
-            
+            initNetwork();
+        }
+
+        protected void initNetwork()
+        {
             //Register internal methods to the callback dictionary
             registerInternalMethods();
 
             m_ctx = NetMQContext.Create();
             m_reply = m_ctx.CreateResponseSocket();
-			m_reply.Options.Linger = System.TimeSpan.Zero;
+            m_reply.Options.Linger = System.TimeSpan.Zero;
             m_reply.Options.ReceiveTimeout = System.TimeSpan.FromSeconds(2);
 
             m_publisher = m_ctx.CreatePublisherSocket();
-			m_publisher.Options.Linger = System.TimeSpan.Zero;
+            m_publisher.Options.Linger = System.TimeSpan.Zero;
 
-			m_subscriber = m_ctx.CreateSubscriberSocket();
-			m_subscriber.Options.Linger = System.TimeSpan.Zero;
+            m_subscriber = m_ctx.CreateSubscriberSocket();
+            m_subscriber.Options.Linger = System.TimeSpan.Zero;
 
             // Binding ports
             IPHostEntry host = Dns.GetHostEntry(Dns.GetHostName());
@@ -98,22 +107,27 @@ namespace ZST
             }
 
             string address = "tcp://" + hostIP;
-            int port = m_reply.BindRandomPort(address);
-            m_replyAddress = address + ":" + port;
+            int publisherPort = m_publisher.BindRandomPort(address);
+            m_publisherAddress = address + ":" + publisherPort;
 
-            port = m_publisher.BindRandomPort(address);
-            m_publisherAddress = address + ":" + port;
-
-            // Connect to stage
-            if (!string.IsNullOrEmpty(stageAddress))
+            if (!string.IsNullOrEmpty(m_stageAddress))
             {
+                //Bind reply 
+                int replyPort = m_reply.BindRandomPort(address);
+                m_replyAddress = address + ":" + replyPort;
+
                 m_stage = m_ctx.CreateRequestSocket();
-				m_stage.Options.Linger = System.TimeSpan.Zero;
+                m_stage.Options.Linger = System.TimeSpan.Zero;
                 m_stage.Connect(m_stageAddress);
                 Console.WriteLine("Stage located at " + m_stage.Options.GetLastEndpoint);
                 Console.WriteLine("Node reply on address " + m_replyAddress);
                 Console.WriteLine("Node publisher on address " + m_publisherAddress);
             }
+            else
+            {
+                m_reply.Bind("tcp://*:" + m_stagePort);
+            }
+           
 
             // Subscribe to all incoming messages
             m_subscriber.SubscribeToAll();
@@ -218,13 +232,17 @@ namespace ZST
                     m_internalNodeMethods[msg.method].run(msg.data);
 
                 //Run local callbacks if they're set to run when the remote method updates
-                if (m_peers.Keys.Contains(msg.data.node))
+                if (msg.data != null)
                 {
-                    if (m_peers[msg.data.node].methods.Keys.Contains(msg.method))
+                    if (m_peers.Keys.Contains(msg.data.node))
                     {
-                        if (m_peers[msg.data.node].methods[msg.method].callback != null) {
-                            m_peers[msg.data.node].methods[msg.method].callback(msg.data);
-                        } 
+                        if (m_peers[msg.data.node].methods.Keys.Contains(msg.method))
+                        {
+                            if (m_peers[msg.data.node].methods[msg.method].callback != null)
+                            {
+                                m_peers[msg.data.node].methods[msg.method].callback(msg.data);
+                            }
+                        }
                     }
                 }
             }
@@ -241,7 +259,8 @@ namespace ZST
         public bool requestRegisterNode(NetMQSocket socket)
         {
             Console.WriteLine("REQ-->: Requesting remote node to register our addresses. Reply:" + m_replyAddress + ", Publisher:" + m_publisherAddress);
-            
+            if (socket == null)
+                socket = m_stage;
             Dictionary<string, object> requestArgs = new Dictionary<string, object>(){
                 {ZstPeerLink.REPLY_ADDRESS, m_replyAddress},
                 {ZstPeerLink.PUBLISHER_ADDRESS, m_publisherAddress}};

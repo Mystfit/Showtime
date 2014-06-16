@@ -77,6 +77,11 @@ namespace ZST {
                 m_args = new Dictionary<string, object>();
 		}
 
+        public ZstMethod clone()
+        {
+            return new ZstMethod(m_name, m_node, m_accessMode, m_args, m_callback);
+        }
+
         /// <summary>
         /// Run the local callback for this method
         /// </summary>

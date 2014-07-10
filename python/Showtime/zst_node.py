@@ -32,7 +32,9 @@ class ZstNode(ZstBase):
         self.peers = {}
 
         # Sockets
-        self.stageAddress = "tcp://" + stageAddress
+        self.stageAddress = stageAddress
+        if self.stageAddress:
+            self.stageAddress = "tcp://" + self.stageAddress
         self.replyAddress = None
         self.publisherAddress = None
 

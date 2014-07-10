@@ -1,8 +1,7 @@
 import sys
 import math
 import time
-from zst_node import *
-from random import randint, random
+from Showtime.zst_node import *
 
 
 class SineWave(object):

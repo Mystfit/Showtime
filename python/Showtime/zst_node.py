@@ -32,10 +32,10 @@ class ZstNode(ZstBase):
         self.peers = {}
 
         # Sockets
-        self.stageAddress = stageAddress
+        self.stageAddress = "tcp://" + stageAddress
         self.replyAddress = None
         self.publisherAddress = None
-    
+
         self.reply = ZstSocket(self.ctx, zmq.REP, self.incomingQueue, "reply")
         self.publisher = ZstSocket(self.ctx, zmq.PUB, self.incomingQueue, "publisher")
         self.subscriber = ZstSocket(self.ctx, zmq.SUB, self.incomingQueue, "subscriber")

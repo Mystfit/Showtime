@@ -2,7 +2,7 @@ import sys
 import math
 import time
 import threading
-from zst_node import *
+from Showtime.zst_node import *
 
 
 class Sinewave(threading.Thread):
@@ -21,12 +21,12 @@ class Sinewave(threading.Thread):
     def run(self):
         count = 0
         while not self.exitFlag:
-            count += 0.001
+            count += 0.01
             count = count % 100
             value = (((math.sin(count) + 1) * 0.2) + 0.3) * 127
             self.args["value"] = value
             self.reader.update_remote_method(self.node.methods[self.method], self.args)
-            time.sleep(0.001)
+            time.sleep(0.01)
 
 reader = ZstNode("SinewaveWriter", sys.argv[1])
 reader.start()

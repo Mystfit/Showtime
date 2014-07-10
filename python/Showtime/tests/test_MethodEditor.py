@@ -1,6 +1,6 @@
 import sys
 import time
-from zst_node import *
+from Showtime.zst_node import *
 
 reader = ZstNode("MethodEditor", sys.argv[1])
 reader.start()

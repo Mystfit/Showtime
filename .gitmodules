@@ -7,3 +7,6 @@
 [submodule "Showtime-Live"]
 	path = Showtime-Live
 	url = https://github.com/Mystfit/Showtime-Live
+[submodule "Showtime-Processing"]
+	path = Showtime-Processing
+	url = https://github.com/Mystfit/Showtime-Processing

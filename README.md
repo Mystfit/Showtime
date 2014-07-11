@@ -1,5 +1,7 @@
 Showtime
---------
-
+========
 Different language implementations have been moved to seperate Git
-repositories
+repositories.
+
+The ZstShowtime library is designed for live performances using ZeroMQ.
+

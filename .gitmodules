@@ -4,3 +4,6 @@
 [submodule "Showtime-Csharp"]
 	path = Showtime-Csharp
 	url = https://github.com/Mystfit/Showtime-Csharp
+[submodule "Showtime-Live"]
+	path = Showtime-Live
+	url = https://github.com/Mystfit/Showtime-Live

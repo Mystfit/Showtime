@@ -1,0 +1,6 @@
+[submodule "Showtime-Python"]
+	path = Showtime-Python
+	url = https://github.com/Mystfit/Showtime-Python
+[submodule "Showtime-Csharp"]
+	path = Showtime-Csharp
+	url = https://github.com/Mystfit/Showtime-Csharp

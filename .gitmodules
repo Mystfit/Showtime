@@ -10,3 +10,6 @@
 [submodule "Showtime-Processing"]
 	path = Showtime-Processing
 	url = https://github.com/Mystfit/Showtime-Processing
+[submodule "Showtime-Java"]
+	path = Showtime-Java
+	url = https://github.com/Mystfit/Showtime-Java.git

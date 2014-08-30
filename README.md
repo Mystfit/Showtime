@@ -6,9 +6,11 @@ repositories.
 Download
 --------
 ***Option A - Individual***
+
 Download each language version of Showtime from their respective Github pages above.
 
 ***Option B - Checkout all languages***
+
 - Run `git clone https://github.com/Mystfit/Showtime.git`
 - Run `git submodule init` followed by `git submodule update`
 

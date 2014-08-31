@@ -5,11 +5,17 @@ repositories.
 
 Download
 --------
-***Option A - Individual***
+***Option A - Individual languages:***
+ - [C#](https://github.com/Mystfit/Showtime-Csharp)
+ - [Java](https://github.com/Mystfit/Showtime-java])
+ - [Processing](https://github.com/Mystfit/Showtime-Processing)
+ - [Python](https://github.com/Mystfit/Showtime-Python)
+ 
+**Plugins for programs**
+ - [Ableton Live](https://github.com/Mystfit/Showtime-Live)
 
-Download each language version of Showtime from their respective Github pages above.
 
-***Option B - Checkout all languages***
+***Option B - All languages***
 
 - Run `git clone https://github.com/Mystfit/Showtime.git`
 - Run `git submodule init` followed by `git submodule update`
